@@ -105,6 +105,9 @@ The system is a three-hop pipeline:
 - Double-tap Spacebar stops capture; the mic button still stops and submits.
 - Spacebar shortcuts are ignored when typing in text inputs.
 
+### 8.6 Responsive Layout
+- The app sets a device-width viewport so responsive breakpoints stack panes on smaller screens.
+
 ## 9. Tone and Reply Style
 - Helpful, calm, and concise.
 - No replies unless explicitly asked.

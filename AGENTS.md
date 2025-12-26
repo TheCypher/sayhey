@@ -4,7 +4,7 @@ Purpose: source of truth for feature scope and technical location. Update this f
 
 ## Feature Catalog
 ### Voice Journal Pane
-- What: Dedicated journal surface that blends push-to-talk voice capture with tap-to-stop transcription, transcript display as single-paragraph entries, and spoken replies with clear mic/playback states; spacebar commands are emphasized in the header and voice controls, voice controls stay in view, entries scroll within a page-sized fixed-height stream in the right pane, and a text composer is revealed from the journal header with a hide control beside Send that auto-collapses after sending while always saving text entries before optional replies with Markdown emphasis.
+- What: Dedicated journal surface that blends push-to-talk voice capture with tap-to-stop transcription, transcript display as single-paragraph entries, and spoken replies with clear mic/playback states; spacebar commands are emphasized in the header and voice controls, voice controls stay in view, entries scroll within a page-sized fixed-height stream in the right pane, responsive breakpoints stack panes on small screens via a device-width viewport, and a text composer is revealed from the journal header with a hide control beside Send that auto-collapses after sending while always saving text entries before optional replies with Markdown emphasis.
 - Where: `app/page.tsx`, `components/application/conversation-pane.tsx`, `hooks/use-voice-capture.ts`, `hooks/use-tts-playback.ts`, `components/ui/button.tsx`, `components/ui/card.tsx`, `app/globals.css`, `app/layout.tsx`, `docs/features/conversation-pane.md`.
 - Why: Keep voice-first journaling and replies in one predictable workflow aligned to `docs/product-reference.md` and shadcn/ui.
 

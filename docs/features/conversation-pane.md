@@ -34,6 +34,7 @@
 - Low-confidence transcripts still receive replies; field updates are suppressed server-side.
 - The text composer is collapsed by default and revealed via a header toggle; the hide control sits next to Send and the composer auto-collapses after submit.
 - Replies render Markdown blocks with inline emphasis (bold/italic/inline code).
+- The layout uses a device-width viewport so the two panes stack on small screens.
 
 ## API/Integration
 - STT: `/api/stt`
