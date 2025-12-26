@@ -1,0 +1,998 @@
+"use client";
+
+import {
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
+import { SiteNav } from "@/components/application/site-nav";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { useTtsPlayback } from "@/hooks/use-tts-playback";
+import { useVoiceCapture } from "@/hooks/use-voice-capture";
+import { looksLikeExplicitRequest } from "@/lib/explicit-request";
+import { cn } from "@/lib/utils";
+
+type MessageRole = "user" | "assistant";
+
+type Message = {
+  id: string;
+  role: MessageRole;
+  content: string;
+};
+
+type ConversationHistoryItem = {
+  role: MessageRole;
+  content: string;
+};
+
+type SendMessageArgs = {
+  text: string;
+  inputType: "voice" | "text";
+  transcriptConfidence?: number | null;
+};
+
+type TextEntryIntent = {
+  trimmed: string;
+  shouldAddEntry: boolean;
+  shouldRequestReply: boolean;
+  notice: string | null;
+};
+
+type MicState = "idle" | "recording" | "processing" | "ready" | "error" | "paused";
+
+type InlineToken = {
+  type: "text" | "strong" | "em" | "code";
+  content: string;
+};
+
+type SpacebarShortcutTarget = EventTarget | {
+  tagName?: string;
+  isContentEditable?: boolean;
+  closest?: (selector: string) => Element | null;
+};
+
+type SpacebarShortcutEvent = {
+  key?: string;
+  code?: string;
+  repeat?: boolean;
+  altKey?: boolean;
+  ctrlKey?: boolean;
+  metaKey?: boolean;
+  target?: SpacebarShortcutTarget | null;
+};
+
+const MIC_STATUS_COPY: Record<
+  MicState,
+  { label: string; helper: string }
+> = {
+  idle: {
+    label: "Mic idle",
+    helper: "Tap to capture a voice entry. Space starts.",
+  },
+  recording: {
+    label: "Listening...",
+    helper: "Tap to stop and capture. Space pauses; double-tap Space stops.",
+  },
+  processing: {
+    label: "Processing...",
+    helper: "Transcribing your voice.",
+  },
+  ready: {
+    label: "Preparing...",
+    helper: "Finalizing your entry.",
+  },
+  error: {
+    label: "Mic error",
+    helper: "Check your microphone and try again.",
+  },
+  paused: {
+    label: "Paused",
+    helper: "Tap to finish. Space resumes; double-tap Space stops.",
+  },
+};
+
+const AUDIO_STATUS_COPY: Record<string, string> = {
+  idle: "Audio idle",
+  loading: "Preparing audio...",
+  playing: "Speaking...",
+  stopped: "Audio stopped",
+  error: "Audio error",
+};
+
+const TEXT_ENTRY_NOTICE = "Use a direct command if you want a reply.";
+
+const COMPOSER_PANEL_ID = "journal-composer-panel";
+
+const isEditableTarget = (target: SpacebarShortcutTarget | null | undefined) => {
+  if (!target) {
+    return false;
+  }
+
+  const element = target as {
+    tagName?: string;
+    isContentEditable?: boolean;
+    closest?: (selector: string) => Element | null;
+  };
+
+  if (element.isContentEditable) {
+    return true;
+  }
+
+  const tagName =
+    typeof element.tagName === "string" ? element.tagName.toLowerCase() : "";
+  if (tagName === "textarea" || tagName === "input" || tagName === "select") {
+    return true;
+  }
+
+  if (typeof element.closest === "function") {
+    const editableParent = element.closest(
+      'textarea, input, select, [contenteditable="true"], [contenteditable=""]'
+    );
+    if (editableParent) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+const isSpacebarKey = (event: SpacebarShortcutEvent) =>
+  event.code === "Space" || event.key === " " || event.key === "Spacebar";
+
+const SPACEBAR_DOUBLE_TAP_MS = 280;
+
+export const isSpacebarShortcut = (event: SpacebarShortcutEvent) => {
+  if (event.repeat || event.altKey || event.ctrlKey || event.metaKey) {
+    return false;
+  }
+
+  if (!isSpacebarKey(event)) {
+    return false;
+  }
+
+  return !isEditableTarget(event.target);
+};
+
+export const getSpacebarCaptureAction = (status: MicState) => {
+  if (status === "recording") {
+    return "pause";
+  }
+  if (status === "paused") {
+    return "resume";
+  }
+  if (status === "idle" || status === "error") {
+    return "start";
+  }
+  return null;
+};
+
+export const shouldStopOnSpacebarDoubleTap = (
+  status: MicState,
+  lastTapAt: number | null,
+  now: number,
+  windowMs: number = SPACEBAR_DOUBLE_TAP_MS
+) => {
+  if (!lastTapAt || now - lastTapAt > windowMs) {
+    return false;
+  }
+
+  return status === "recording" || status === "paused";
+};
+
+const createId = () => {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `msg-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
+export const buildConversationHistory = (
+  messages: Message[]
+): ConversationHistoryItem[] =>
+  messages.slice(-6).map((message) => ({
+    role: message.role,
+    content: message.content,
+  }));
+
+const parseInlineMarkdown = (text: string): InlineToken[] => {
+  const tokens: InlineToken[] = [];
+  let buffer = "";
+  let index = 0;
+
+  const flushText = () => {
+    if (buffer) {
+      tokens.push({ type: "text", content: buffer });
+      buffer = "";
+    }
+  };
+
+  while (index < text.length) {
+    const char = text[index];
+
+    if (char === "`") {
+      const end = text.indexOf("`", index + 1);
+      if (end !== -1) {
+        flushText();
+        const content = text.slice(index + 1, end);
+        if (content) {
+          tokens.push({ type: "code", content });
+        }
+        index = end + 1;
+        continue;
+      }
+    }
+
+    if (char === "*" && text[index + 1] === "*") {
+      const end = text.indexOf("**", index + 2);
+      if (end !== -1) {
+        flushText();
+        const content = text.slice(index + 2, end);
+        if (content) {
+          tokens.push({ type: "strong", content });
+        }
+        index = end + 2;
+        continue;
+      }
+    }
+
+    if (char === "*") {
+      const end = text.indexOf("*", index + 1);
+      if (end !== -1) {
+        flushText();
+        const content = text.slice(index + 1, end);
+        if (content) {
+          tokens.push({ type: "em", content });
+        }
+        index = end + 1;
+        continue;
+      }
+    }
+
+    buffer += char;
+    index += 1;
+  }
+
+  flushText();
+  return tokens;
+};
+
+const parseMarkdownBlocks = (text: string) => {
+  const lines = text.split("\n");
+  const blocks: Array<
+    | { type: "code"; content: string }
+    | { type: "list"; items: string[] }
+    | { type: "paragraph"; content: string }
+  > = [];
+
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (line.trim().startsWith("```")) {
+      const codeLines: string[] = [];
+      i += 1;
+      while (i < lines.length && !lines[i].trim().startsWith("```")) {
+        codeLines.push(lines[i]);
+        i += 1;
+      }
+      i += 1;
+      blocks.push({ type: "code", content: codeLines.join("\n") });
+      continue;
+    }
+
+    if (line.trim().startsWith("- ")) {
+      const items: string[] = [];
+      while (i < lines.length && lines[i].trim().startsWith("- ")) {
+        items.push(lines[i].trim().slice(2));
+        i += 1;
+      }
+      blocks.push({ type: "list", items });
+      continue;
+    }
+
+    const paragraphLines: string[] = [];
+    while (i < lines.length && lines[i].trim() !== "") {
+      paragraphLines.push(lines[i]);
+      i += 1;
+    }
+    const paragraph = paragraphLines.join(" ").trim();
+    if (paragraph) {
+      blocks.push({ type: "paragraph", content: paragraph });
+    }
+
+    while (i < lines.length && lines[i].trim() === "") {
+      i += 1;
+    }
+  }
+
+  return blocks;
+};
+
+const renderInlineMarkdown = (text: string) =>
+  parseInlineMarkdown(text).map((token, index) => {
+    if (token.type === "strong") {
+      return (
+        <strong
+          key={`strong-${index}`}
+          className="font-semibold text-[color:var(--page-ink-strong)]"
+        >
+          {token.content}
+        </strong>
+      );
+    }
+    if (token.type === "em") {
+      return (
+        <em key={`em-${index}`} className="italic">
+          {token.content}
+        </em>
+      );
+    }
+    if (token.type === "code") {
+      return (
+        <code
+          key={`code-${index}`}
+          className="rounded bg-[color:var(--page-ink-strong)]/10 px-1 py-0.5 font-mono text-[0.85em] text-[color:var(--page-ink-strong)]"
+        >
+          {token.content}
+        </code>
+      );
+    }
+    return token.content;
+  });
+
+export const renderMarkdown = (text: string) => {
+  const blocks = parseMarkdownBlocks(text);
+  return blocks.map((block, index) => {
+    if (block.type === "code") {
+      return (
+        <pre
+          key={`code-${index}`}
+          className="overflow-x-auto rounded-xl bg-[color:var(--page-ink-strong)]/90 p-4 text-xs text-white"
+        >
+          <code>{block.content}</code>
+        </pre>
+      );
+    }
+    if (block.type === "list") {
+      return (
+        <ul key={`list-${index}`} className="list-disc space-y-1 pl-5">
+          {block.items.map((item, itemIndex) => (
+            <li key={`item-${index}-${itemIndex}`}>
+              {renderInlineMarkdown(item)}
+            </li>
+          ))}
+        </ul>
+      );
+    }
+    return (
+      <p key={`paragraph-${index}`} className="leading-relaxed">
+        {renderInlineMarkdown(block.content)}
+      </p>
+    );
+  });
+};
+
+export { looksLikeExplicitRequest };
+
+export const getTextEntryIntent = (text: string): TextEntryIntent => {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return {
+      trimmed: "",
+      shouldAddEntry: false,
+      shouldRequestReply: false,
+      notice: null,
+    };
+  }
+
+  const shouldRequestReply = looksLikeExplicitRequest(trimmed);
+  return {
+    trimmed,
+    shouldAddEntry: true,
+    shouldRequestReply,
+    notice: shouldRequestReply ? null : TEXT_ENTRY_NOTICE,
+  };
+};
+
+export const normalizeVoiceTranscript = (text: string) =>
+  text.replace(/\s+/g, " ").trim();
+
+export const stripSavedUpdatesForTts = (text: string) => {
+  const cleaned = text.replace(
+    /\n?Saved updates:\n[\s\S]*?(\n\n|$)/gi,
+    "\n\n"
+  );
+  return cleaned.replace(/\n{3,}/g, "\n\n").trim();
+};
+
+const buildPlaceholderReply = () =>
+  "I ran into a problem generating a reply. Please try again in a moment.";
+
+export function ConversationPane() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const [isComposerVisible, setIsComposerVisible] = useState(false);
+  const streamRef = useRef<HTMLDivElement | null>(null);
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
+  const messagesRef = useRef<Message[]>([]);
+  const lastSpacebarTapRef = useRef<number | null>(null);
+
+  const {
+    status: voiceStatus,
+    transcript,
+    confidence,
+    error: voiceError,
+    startRecording,
+    pauseRecording,
+    resumeRecording,
+    stopRecording,
+    reset: resetVoice,
+  } = useVoiceCapture();
+
+  const voiceStatusRef = useRef<MicState>(voiceStatus);
+
+  const {
+    status: ttsStatus,
+    queue: ttsQueue,
+    error: ttsError,
+    enqueue: enqueueTts,
+    clear: clearTts,
+  } = useTtsPlayback();
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    voiceStatusRef.current = voiceStatus;
+  }, [voiceStatus]);
+
+  useEffect(() => {
+    if (!streamRef.current) {
+      return;
+    }
+    streamRef.current.scrollTop = streamRef.current.scrollHeight;
+  }, [messages.length]);
+
+  useEffect(() => {
+    if (!isComposerVisible) {
+      return;
+    }
+    composerRef.current?.focus();
+  }, [isComposerVisible]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (typeof document !== "undefined" && !document.hasFocus()) {
+        return;
+      }
+
+      if (!isSpacebarShortcut(event)) {
+        return;
+      }
+
+      const now = Date.now();
+      const currentStatus = voiceStatusRef.current;
+
+      if (
+        shouldStopOnSpacebarDoubleTap(
+          currentStatus,
+          lastSpacebarTapRef.current,
+          now
+        )
+      ) {
+        event.preventDefault();
+        lastSpacebarTapRef.current = null;
+        setVoiceNotice(null);
+        setSendError(null);
+        stopRecording();
+        voiceStatusRef.current = "processing";
+        return;
+      }
+
+      const action = getSpacebarCaptureAction(currentStatus);
+      if (!action) {
+        return;
+      }
+
+      event.preventDefault();
+      setVoiceNotice(null);
+      setSendError(null);
+      lastSpacebarTapRef.current = now;
+
+      if (action === "start") {
+        clearTts();
+        startRecording();
+        voiceStatusRef.current = "recording";
+        return;
+      }
+
+      if (action === "pause") {
+        pauseRecording();
+        voiceStatusRef.current = "paused";
+        return;
+      }
+
+      if (action === "resume") {
+        resumeRecording();
+        voiceStatusRef.current = "recording";
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    clearTts,
+    pauseRecording,
+    resumeRecording,
+    startRecording,
+    stopRecording,
+  ]);
+
+  const sendMessage = useCallback(
+    async ({
+      text,
+      inputType,
+      transcriptConfidence,
+    }: SendMessageArgs) => {
+      const trimmed = text.trim();
+      if (!trimmed) {
+        return;
+      }
+
+      clearTts();
+      setSendError(null);
+      setVoiceNotice(null);
+
+      const conversationHistory = buildConversationHistory(messagesRef.current);
+
+      try {
+        const response = await fetch("/api/chat/turns", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: trimmed,
+            agentId: "helper",
+            inputType,
+            transcriptConfidence,
+            conversationHistory,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Chat request failed");
+        }
+
+        const data = (await response.json()) as {
+          assistantMessage?: string;
+          fieldUpdateResults?: unknown[];
+          ignored?: boolean;
+        };
+
+        if (data.ignored) {
+          setVoiceNotice("Use a direct command if you want a reply.");
+          return;
+        }
+
+        const assistantMessage =
+          typeof data.assistantMessage === "string" &&
+          data.assistantMessage.trim()
+            ? data.assistantMessage
+            : buildPlaceholderReply();
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: createId(),
+            role: "assistant",
+            content: assistantMessage,
+          },
+        ]);
+
+        enqueueTts(stripSavedUpdatesForTts(assistantMessage));
+      } catch (error) {
+        setSendError(
+          error instanceof Error
+            ? error.message
+            : "Unable to generate a reply."
+        );
+
+        const fallback = buildPlaceholderReply();
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: createId(),
+            role: "assistant",
+            content: fallback,
+          },
+        ]);
+        enqueueTts(stripSavedUpdatesForTts(fallback));
+      }
+    },
+    [clearTts, enqueueTts]
+  );
+
+  useEffect(() => {
+    if (voiceStatus !== "ready" || !transcript) {
+      return;
+    }
+
+    void (async () => {
+      const trimmed = normalizeVoiceTranscript(transcript);
+      if (!trimmed) {
+        resetVoice();
+        return;
+      }
+
+      setVoiceNotice(null);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: createId(),
+          role: "user",
+          content: trimmed,
+        },
+      ]);
+
+      const isExplicit = looksLikeExplicitRequest(trimmed);
+
+      if (!isExplicit) {
+        setVoiceNotice("Use a direct command if you want a reply.");
+        resetVoice();
+        return;
+      }
+
+      await sendMessage({
+        text: trimmed,
+        inputType: "voice",
+        transcriptConfidence: confidence,
+      });
+      resetVoice();
+    })();
+  }, [voiceStatus, transcript, confidence, resetVoice, sendMessage]);
+
+  const micState: MicState = voiceStatus;
+  const micCopy = MIC_STATUS_COPY[micState] ?? MIC_STATUS_COPY.idle;
+  const micButtonLabel =
+    micState === "recording" || micState === "paused" ? "Stop" : "Talk";
+  const audioLabel = AUDIO_STATUS_COPY[ttsStatus] ?? "Audio idle";
+
+  const handleComposerToggle = () => {
+    setIsComposerVisible((prev) => !prev);
+  };
+
+  const handleMicClick = () => {
+    if (voiceStatus === "recording" || voiceStatus === "paused") {
+      setVoiceNotice(null);
+      setSendError(null);
+      stopRecording();
+      return;
+    }
+    setVoiceNotice(null);
+    setSendError(null);
+    clearTts();
+    startRecording();
+  };
+
+  const handleComposerSubmit = async (
+    event: FormEvent<HTMLFormElement>
+  ) => {
+    event.preventDefault();
+    if (isSending) {
+      return;
+    }
+
+    const { trimmed, shouldAddEntry, shouldRequestReply } =
+      getTextEntryIntent(draft);
+    if (!shouldAddEntry) {
+      return;
+    }
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: createId(),
+        role: "user",
+        content: trimmed,
+      },
+    ]);
+    setDraft("");
+    setIsComposerVisible(false);
+
+    if (!shouldRequestReply) {
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      await sendMessage({
+        text: trimmed,
+        inputType: "text",
+      });
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const audioQueueLabel = useMemo(() => {
+    if (ttsQueue.length === 0) {
+      return "No queued audio";
+    }
+    if (ttsQueue.length === 1) {
+      return "1 reply queued";
+    }
+    return `${ttsQueue.length} replies queued`;
+  }, [ttsQueue.length]);
+
+  return (
+    <div
+      className="relative min-h-screen overflow-x-hidden bg-[color:var(--page-bg)] text-[color:var(--page-ink)]"
+      data-pane="conversation"
+    >
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -left-32 top-12 h-72 w-72 rounded-full bg-[radial-gradient(circle_at_top,_rgba(198,214,226,0.6),_transparent_70%)] blur-2xl animate-drift" />
+        <div className="absolute right-[-8rem] top-1/4 h-96 w-96 rounded-full bg-[radial-gradient(circle_at_30%_30%,_rgba(244,216,172,0.6),_transparent_70%)] blur-3xl animate-drift-slow" />
+        <div className="absolute bottom-[-6rem] left-1/4 h-80 w-80 rounded-full bg-[radial-gradient(circle,_rgba(201,225,214,0.55),_transparent_70%)] blur-3xl animate-drift" />
+      </div>
+
+      <main className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-8 px-6 py-10 md:h-screen md:overflow-hidden md:px-10 md:py-12">
+        <SiteNav current="home" />
+        <header className="flex flex-wrap items-center justify-between gap-4">
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--page-muted)]">
+              Voice journal
+            </p>
+            <h1 className="font-display text-4xl text-[color:var(--page-ink-strong)]">
+              Journal
+            </h1>
+          </div>
+          <div className="space-y-1 text-sm text-[color:var(--page-muted)]">
+            <p>
+              Main control:{" "}
+              <strong className="font-semibold text-[color:var(--page-ink-strong)]">
+                Spacebar
+              </strong>
+              . Press{" "}
+              <strong className="font-semibold text-[color:var(--page-ink-strong)]">
+                Space
+              </strong>{" "}
+              to start, pause, or resume; double-tap{" "}
+              <strong className="font-semibold text-[color:var(--page-ink-strong)]">
+                Space
+              </strong>{" "}
+              to stop and send.
+            </p>
+            <p>Use a direct command if you want a reply.</p>
+          </div>
+        </header>
+
+        <section className="grid flex-1 min-h-0 gap-6 md:grid-cols-[0.9fr_1.1fr] md:grid-rows-[minmax(0,1fr)]">
+          <Card
+            data-pane="voice-controls"
+            className="bg-[color:var(--page-card)] shadow-xl shadow-black/5 md:sticky md:top-10 md:self-start"
+          >
+            <CardHeader>
+              <CardTitle>Voice controls</CardTitle>
+              <CardDescription>
+                Push to talk, then tap again to capture.{" "}
+                <strong className="font-semibold text-[color:var(--page-ink-strong)]">
+                  Spacebar
+                </strong>{" "}
+                runs the mic: press{" "}
+                <strong className="font-semibold text-[color:var(--page-ink-strong)]">
+                  Space
+                </strong>{" "}
+                to pause or resume; double-tap{" "}
+                <strong className="font-semibold text-[color:var(--page-ink-strong)]">
+                  Space
+                </strong>{" "}
+                to stop and send.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center gap-4">
+                <Button
+                  data-control="mic"
+                  className={cn(
+                    "h-16 w-16 rounded-full text-xs font-semibold",
+                    voiceStatus === "recording"
+                      ? "bg-[color:var(--page-accent-strong)] text-white"
+                      : "bg-[color:var(--page-accent)] text-[color:var(--page-ink-strong)]"
+                  )}
+                  onClick={handleMicClick}
+                  aria-pressed={
+                    voiceStatus === "recording" || voiceStatus === "paused"
+                  }
+                  disabled={voiceStatus === "processing" || voiceStatus === "ready"}
+                >
+                  {micButtonLabel}
+                </Button>
+                <div>
+                  <p className="text-sm font-semibold text-[color:var(--page-ink-strong)]">
+                    {micCopy.label}
+                  </p>
+                  <p className="text-xs text-[color:var(--page-muted)]">
+                    {micCopy.helper}
+                  </p>
+                </div>
+              </div>
+
+              {voiceStatus === "processing" && (
+                <p className="text-sm text-[color:var(--page-muted)]">
+                  Transcribing your entry...
+                </p>
+              )}
+
+              {voiceStatus === "ready" && (
+                <p className="text-sm text-[color:var(--page-muted)]">
+                  Preparing your entry...
+                </p>
+              )}
+
+              {voiceError && (
+                <p className="text-sm text-red-700">{voiceError}</p>
+              )}
+
+              {voiceNotice && (
+                <p className="text-sm text-amber-700">{voiceNotice}</p>
+              )}
+
+              <div className="space-y-2 rounded-2xl border border-[color:var(--page-border)] bg-white/60 p-4">
+                <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-[color:var(--page-muted)]">
+                  <span>Audio playback</span>
+                  <span>{audioLabel}</span>
+                </div>
+                <p className="text-sm text-[color:var(--page-muted)]">
+                  {audioQueueLabel}
+                </p>
+                <div className="flex items-center gap-3">
+                  <Button
+                    data-control="stop-audio"
+                    variant="outline"
+                    size="sm"
+                    onClick={clearTts}
+                    disabled={ttsStatus === "idle" && ttsQueue.length === 0}
+                  >
+                    Stop audio
+                  </Button>
+                  {ttsError && (
+                    <span className="text-xs text-red-700">{ttsError}</span>
+                  )}
+                </div>
+              </div>
+
+              {sendError && (
+                <p className="text-sm text-red-700">{sendError}</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card
+            data-pane="journal-entries"
+            data-size="page"
+            className="flex h-full min-h-0 flex-col bg-[color:var(--page-card)] shadow-xl shadow-black/5"
+          >
+            <CardHeader>
+              <div
+                data-location="journal-header"
+                className="flex flex-wrap items-start justify-between gap-4"
+              >
+                <div className="space-y-1">
+                  <CardTitle>Journal entries</CardTitle>
+                  <CardDescription>
+                    Voice turns are transcribed. Text entries and replies appear below.
+                  </CardDescription>
+                </div>
+                {!isComposerVisible && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    data-control="composer-toggle"
+                    aria-controls={COMPOSER_PANEL_ID}
+                    aria-expanded={isComposerVisible}
+                    onClick={handleComposerToggle}
+                  >
+                    Show text entry
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="flex min-h-0 flex-1 flex-col gap-6">
+              <div
+                ref={streamRef}
+                data-stream="messages"
+                data-scroll="journal-entries"
+                className="flex-1 min-h-0 space-y-4 overflow-y-auto rounded-2xl border border-[color:var(--page-border)] bg-white/70 p-4"
+              >
+                {messages.length === 0 ? (
+                  <div className="text-sm text-[color:var(--page-muted)]">
+                    Say or type your entry to get started.
+                  </div>
+                ) : (
+                  messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={cn(
+                        "space-y-2 rounded-2xl border p-4",
+                        message.role === "user"
+                          ? "ml-auto border-[color:var(--page-accent)]/50 bg-[color:var(--page-accent)]/15"
+                          : "border-[color:var(--page-border)] bg-white"
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--page-muted)]">
+                          {message.role === "user" ? "Entry" : "Reply"}
+                        </span>
+                      </div>
+                      <div className="space-y-3 text-sm text-[color:var(--page-ink-strong)]">
+                        {renderMarkdown(message.content)}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <form
+                id={COMPOSER_PANEL_ID}
+                data-control="composer"
+                hidden={!isComposerVisible}
+                className="space-y-3 rounded-2xl border border-[color:var(--page-border)] bg-white/70 p-4"
+                onSubmit={handleComposerSubmit}
+              >
+                <label
+                  htmlFor="journal-composer"
+                  className="text-xs uppercase tracking-[0.2em] text-[color:var(--page-muted)]"
+                >
+                  Journal entry
+                </label>
+                <Textarea
+                  id="journal-composer"
+                  name="journal-composer"
+                  ref={composerRef}
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                  placeholder="Use a direct command if you want a reply."
+                />
+                <div className="flex items-center justify-end gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    data-control="composer-toggle"
+                    aria-controls={COMPOSER_PANEL_ID}
+                    aria-expanded={isComposerVisible}
+                    onClick={handleComposerToggle}
+                  >
+                    Hide text entry
+                  </Button>
+                  <Button type="submit" size="sm" disabled={isSending}>
+                    {isSending ? "Sending" : "Send"}
+                  </Button>
+                </div>
+              </form>
+
+              <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--page-muted)]">
+                Voice-first journal. Use a direct command to get a reply.
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      </main>
+    </div>
+  );
+}

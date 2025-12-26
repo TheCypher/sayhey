@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum ConversationState {
+  ACTIVE
+  PAUSED
+  STOPPED
+}
+
+model User {
+  id                    String        @id @default(cuid())
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  currentConversationId String?       @unique
+  currentConversation   Conversation? @relation("CurrentConversation", fields: [currentConversationId], references: [id], onDelete: SetNull)
+  conversations         Conversation[] @relation("UserConversations")
+}
+
+model Conversation {
+  id            String             @id @default(cuid())
+  userId        String
+  user          User               @relation("UserConversations", fields: [userId], references: [id], onDelete: Cascade)
+  state         ConversationState  @default(ACTIVE)
+  startedAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  stoppedAt     DateTime?
+  segments      TranscriptSegment[]
+  currentForUser User?             @relation("CurrentConversation")
+
+  @@index([userId, state])
+}
+
+model TranscriptSegment {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sequence       Int
+  text           String
+  startedAt      DateTime
+  endedAt        DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@unique([conversationId, sequence])
+  @@index([conversationId, createdAt])
+}

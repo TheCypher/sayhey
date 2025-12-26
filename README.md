@@ -20,6 +20,33 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Roadmap
+
+- [x] Establish workflow docs and operating loop
+- [x] Lock product behavior reference (`docs/product-reference.md`)
+- [x] Define voice journal features in `AGENTS.md` and `docs/features/`
+- [x] Add Jest setup and first red-green-refactor cycle
+- [x] Build push-to-talk voice capture with Groq Whisper STT proxy
+- [x] Add ElevenLabs TTS proxy and queued playback hook
+- [x] Add chat turn endpoint with Bolt routing and confidence-aware field update gating
+- [x] Ship the voice-first journal pane with explicit request gating and spoken replies
+- [x] Add privacy-first about page
+- [x] Add primary navigation with Home/About links
+- [ ] Add conversation persistence and confirmation flow for low-confidence field updates
+- [ ] Add streaming TTS/chunking for long replies
+- [ ] Add export and deletion flows
+
+## Internal Docs
+
+- Feature catalog: `AGENTS.md`
+- Product reference: `docs/product-reference.md`
+- Orchestrator plan: `docs/orchestrator-doc.md`
+- Workflow loop: `docs/workflow-handbook.md`
+- Testing guide: `docs/testing-playbook-doc.md`
+- Context log: `docs/context-doc.md`
+- Workflow boilerplate: `docs/workflow-boilerplate.md`
+- Feature blueprints: `docs/features/README.md`
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
