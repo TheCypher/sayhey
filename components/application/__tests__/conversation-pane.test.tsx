@@ -166,6 +166,116 @@ describe("ConversationPane", () => {
     expect(html).not.toContain('data-nav="primary"');
   });
 
+  it("shows timestamps for journal entries", () => {
+    mockUseLocalConversations.mockReturnValueOnce({
+      conversations: [],
+      activeConversationId: "conv-1",
+      messages: [
+        {
+          id: "msg-1",
+          role: "user",
+          content: "Hello",
+          createdAt: 1700000000000,
+        },
+      ],
+      isLoading: false,
+      error: null,
+      createConversation: jest.fn().mockResolvedValue(undefined),
+      openConversation: jest.fn().mockResolvedValue(undefined),
+      appendMessage: jest.fn().mockResolvedValue(undefined),
+      renameConversation: jest.fn().mockResolvedValue(undefined),
+      pinConversation: jest.fn().mockResolvedValue(undefined),
+      archiveConversation: jest.fn().mockResolvedValue(undefined),
+      deleteConversation: jest.fn().mockResolvedValue(undefined),
+      refresh: jest.fn().mockResolvedValue(undefined),
+    });
+
+    const html = renderToStaticMarkup(
+      <ConversationPane initialView="history" />
+    );
+
+    expect(html).toContain('data-role="timestamp"');
+    expect(html).toContain('data-timestamp="1700000000000"');
+  });
+
+  it("adds a listen control to each entry in history view", () => {
+    mockUseLocalConversations.mockReturnValueOnce({
+      conversations: [],
+      activeConversationId: "conv-1",
+      messages: [
+        {
+          id: "msg-1",
+          role: "user",
+          content: "Hello",
+          createdAt: 1700000000000,
+        },
+        {
+          id: "msg-2",
+          role: "assistant",
+          content: "Hi there",
+          createdAt: 1700000001000,
+        },
+      ],
+      isLoading: false,
+      error: null,
+      createConversation: jest.fn().mockResolvedValue(undefined),
+      openConversation: jest.fn().mockResolvedValue(undefined),
+      appendMessage: jest.fn().mockResolvedValue(undefined),
+      renameConversation: jest.fn().mockResolvedValue(undefined),
+      pinConversation: jest.fn().mockResolvedValue(undefined),
+      archiveConversation: jest.fn().mockResolvedValue(undefined),
+      deleteConversation: jest.fn().mockResolvedValue(undefined),
+      refresh: jest.fn().mockResolvedValue(undefined),
+    });
+
+    const html = renderToStaticMarkup(
+      <ConversationPane initialView="history" />
+    );
+
+    const matches = html.match(/data-control="entry-tts"/g) ?? [];
+    expect(matches).toHaveLength(2);
+    expect(html).toContain('data-message-id="msg-1"');
+    expect(html).toContain('data-message-id="msg-2"');
+  });
+
+  it("adds a listen control to each entry on the home view", () => {
+    mockUseLocalConversations.mockReturnValueOnce({
+      conversations: [],
+      activeConversationId: "conv-2",
+      messages: [
+        {
+          id: "msg-3",
+          role: "user",
+          content: "Day one",
+          createdAt: 1700000000000,
+        },
+        {
+          id: "msg-4",
+          role: "assistant",
+          content: "Reply back",
+          createdAt: 1700000001000,
+        },
+      ],
+      isLoading: false,
+      error: null,
+      createConversation: jest.fn().mockResolvedValue(undefined),
+      openConversation: jest.fn().mockResolvedValue(undefined),
+      appendMessage: jest.fn().mockResolvedValue(undefined),
+      renameConversation: jest.fn().mockResolvedValue(undefined),
+      pinConversation: jest.fn().mockResolvedValue(undefined),
+      archiveConversation: jest.fn().mockResolvedValue(undefined),
+      deleteConversation: jest.fn().mockResolvedValue(undefined),
+      refresh: jest.fn().mockResolvedValue(undefined),
+    });
+
+    const html = renderToStaticMarkup(<ConversationPane />);
+
+    const matches = html.match(/data-control="entry-tts"/g) ?? [];
+    expect(matches).toHaveLength(2);
+    expect(html).toContain('data-message-id="msg-3"');
+    expect(html).toContain('data-message-id="msg-4"');
+  });
+
   it("defaults the sidebar to closed with a toggle control", () => {
     const html = renderToStaticMarkup(<ConversationPane />);
 

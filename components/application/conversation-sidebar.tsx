@@ -290,15 +290,15 @@ export const ConversationSidebar = ({
           onClick={onNewConversation}
         >
           <Plus className="h-4 w-4" />
-          New chat
+          New Journal
         </Button>
         <div className="flex items-center gap-3 px-2">
           <Search className="h-4 w-4 text-[color:var(--page-muted)]" />
           <Input
             value={searchTerm}
             onChange={(event) => onSearchTermChange(event.target.value)}
-            placeholder="Search chats"
-            aria-label="Search chats"
+            placeholder="Search Journals"
+            aria-label="Search Journals"
             className="h-10 flex-1 rounded-none border-transparent bg-transparent p-0 text-base placeholder:text-[color:var(--page-muted)] shadow-none focus-visible:ring-0"
           />
         </div>
@@ -318,7 +318,7 @@ export const ConversationSidebar = ({
         data-section="chat-list"
       >
         <div className="flex items-center gap-2 text-sm text-[color:var(--page-muted)]">
-          <span>Chats</span>
+          <span>Journals</span>
           <ChevronDown className="h-4 w-4" />
         </div>
         {isLoading ? (

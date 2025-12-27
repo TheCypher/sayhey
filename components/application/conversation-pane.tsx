@@ -459,6 +459,22 @@ export const stripSavedUpdatesForTts = (text: string) => {
   return cleaned.replace(/\n{3,}/g, "\n\n").trim();
 };
 
+const formatMessageTimestamp = (timestamp?: number | null) => {
+  if (timestamp === null || timestamp === undefined) {
+    return null;
+  }
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+};
+
 const buildPlaceholderReply = () =>
   "I ran into a problem generating a reply. Please try again in a moment.";
 
@@ -979,6 +995,14 @@ export function ConversationPane({
     }
   };
 
+  const handleEntryPlayback = useCallback(
+    (content: string) => {
+      clearTts();
+      enqueueTts(stripSavedUpdatesForTts(content));
+    },
+    [clearTts, enqueueTts]
+  );
+
   const audioQueueLabel = useMemo(() => {
     if (ttsQueue.length === 0) {
       return "No queued audio";
@@ -1260,17 +1284,49 @@ export function ConversationPane({
                         </div>
                       )
                     ) : (
-                      messages.map((message) => (
-                        <div key={message.id} className="space-y-3">
-                          <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--page-muted)]">
-                            {message.role === "user" ? "Entry" : "Reply"}
+                      messages.map((message) => {
+                        const timestamp = formatMessageTimestamp(
+                          message.createdAt
+                        );
+
+                        return (
+                          <div key={message.id} className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--page-muted)]">
+                                {message.role === "user" ? "Entry" : "Reply"}
+                              </span>
+                              {timestamp && (
+                                <span
+                                  className="text-[11px] font-semibold text-[color:var(--page-ink-strong)]"
+                                  data-role="timestamp"
+                                  data-timestamp={message.createdAt}
+                                >
+                                  {timestamp}
+                                </span>
+                              )}
+                            </div>
+                            <div className="space-y-3 text-base leading-7 text-[color:var(--page-ink-strong)]">
+                              {renderMarkdown(message.content)}
+                            </div>
+                            <div className="flex items-center justify-end">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                data-control="entry-tts"
+                                data-message-id={message.id}
+                                className="h-7 px-2 text-[11px] text-[color:var(--page-muted)] hover:text-[color:var(--page-ink-strong)]"
+                                onClick={() =>
+                                  handleEntryPlayback(message.content)
+                                }
+                              >
+                                Listen
+                              </Button>
+                            </div>
                           </div>
-                          <div className="space-y-3 text-base leading-7 text-[color:var(--page-ink-strong)]">
-                            {renderMarkdown(message.content)}
-                          </div>
-                        </div>
-                      ))
-                    )}
+                      );
+                    })
+                  )}
                   </div>
                 </div>
               </section>
@@ -1487,26 +1543,56 @@ export function ConversationPane({
                             </div>
                           )
                         ) : (
-                          messages.map((message) => (
-                            <div
-                              key={message.id}
-                              className={cn(
-                                "space-y-2 rounded-2xl border p-4",
-                                message.role === "user"
-                                  ? "ml-auto border-[color:var(--page-accent)]/50 bg-[color:var(--page-accent)]/15"
-                                  : "border-[color:var(--page-border)] bg-white"
-                              )}
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--page-muted)]">
-                                  {message.role === "user" ? "Entry" : "Reply"}
-                                </span>
+                          messages.map((message) => {
+                            const timestamp = formatMessageTimestamp(
+                              message.createdAt
+                            );
+
+                            return (
+                              <div
+                                key={message.id}
+                                className={cn(
+                                  "space-y-2 rounded-2xl border p-4",
+                                  message.role === "user"
+                                    ? "ml-auto border-[color:var(--page-accent)]/50 bg-[color:var(--page-accent)]/15"
+                                    : "border-[color:var(--page-border)] bg-white"
+                                )}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--page-muted)]">
+                                    {message.role === "user" ? "Entry" : "Reply"}
+                                  </span>
+                                  {timestamp && (
+                                    <span
+                                      className="text-xs font-semibold text-[color:var(--page-ink-strong)]"
+                                      data-role="timestamp"
+                                      data-timestamp={message.createdAt}
+                                    >
+                                      {timestamp}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="space-y-3 text-sm text-[color:var(--page-ink-strong)]">
+                                  {renderMarkdown(message.content)}
+                                </div>
+                                <div className="flex items-center justify-end">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    data-control="entry-tts"
+                                    data-message-id={message.id}
+                                    className="h-7 px-2 text-[11px] text-[color:var(--page-muted)] hover:text-[color:var(--page-ink-strong)]"
+                                    onClick={() =>
+                                      handleEntryPlayback(message.content)
+                                    }
+                                  >
+                                    Listen
+                                  </Button>
+                                </div>
                               </div>
-                              <div className="space-y-3 text-sm text-[color:var(--page-ink-strong)]">
-                                {renderMarkdown(message.content)}
-                              </div>
-                            </div>
-                          ))
+                            );
+                          })
                         )}
                       </div>
 

@@ -51,6 +51,7 @@ Violating these principles is a product bug.
 - Replies are spoken by default when requested.
 - TTS failures fall back to text-only without blocking capture.
 - Users can stop playback; stopping clears the queue.
+- Each journal entry includes a Listen control at the bottom right; using it stops current audio and speaks that entry.
 
 ## 5. Architecture Overview
 The system is a three-hop pipeline:
@@ -99,6 +100,8 @@ The system is a three-hop pipeline:
 - All voice turns render as text in the journal pane.
 - Voice transcripts are merged into a single paragraph before processing or playback.
 - The journal entries pane stays page-sized; the entry stream fills the remaining height and scrolls vertically so entries never resize the pane.
+- Entry and reply headers show the saved date and time.
+- Entry cards include a bottom-right Listen control that plays the entry aloud.
 - Past journals render as a full-width white canvas with plain text blocks for entries (no card styling), while the homepage keeps the split card layout.
 - Past journals use a sticky header for mic controls and the optional text composer above the stream; the homepage keeps the dedicated voice controls card.
 - Replies render Markdown lists, code blocks, and inline emphasis (bold/italic/inline code).
@@ -119,7 +122,7 @@ The system is a three-hop pipeline:
 - Pages are sized to the dynamic viewport height; scrolling appears only when content exceeds the visible page.
 - On desktop, the conversation sidebar is a full-height left rail aligned to the viewport edge with square corners.
 - The sidebar is collapsible and defaults to closed; a header toggle reopens it.
-- On mobile, selecting a past conversation or starting a new chat closes the sidebar to reveal the journal.
+- On mobile, selecting a past conversation or starting a new journal closes the sidebar to reveal the journal.
 - On mobile, the journal entries panel stays tall enough to keep the stream readable.
 - On desktop, the sidebar stays open after selecting history, and its open/closed state persists across sessions.
 - The sidebar shows a loading state until local conversation history hydrates on the client.
@@ -134,7 +137,7 @@ The system is a three-hop pipeline:
 - The panel disappears as soon as the active journal receives its first entry.
 
 ### 8.8 Navigation
-- The Hey brand link always routes to Home and starts a new chat.
+- The Hey brand link always routes to Home and starts a new journal.
 
 ### 8.9 Privacy Sentence
 - No standalone privacy sentence appears on the journal surface.

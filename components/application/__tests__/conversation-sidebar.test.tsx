@@ -72,10 +72,10 @@ describe("ConversationSidebar", () => {
     expect(html).toContain("rounded-none");
     expect(html).toContain("h-[100dvh]");
     expect(html).toContain('data-section="sidebar-actions"');
-    expect(html).toContain(">New chat<");
-    expect(html).toContain("Search chats");
+    expect(html).toContain(">New Journal<");
+    expect(html).toContain("Search Journals");
     expect(html).toContain(">Library<");
-    expect(html).toContain(">Chats<");
+    expect(html).toContain(">Journals<");
   });
 
   it("renders chat titles without previews or timestamps", () => {
