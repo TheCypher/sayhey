@@ -28,6 +28,13 @@ export type LocalConversationState = {
 
 const EMPTY_MESSAGES: Message[] = [];
 
+const createConversationId = () => {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `conv-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
 export const useLocalConversations = (): LocalConversationState => {
   const isBrowser = typeof window !== "undefined";
   const store = useMemo(
@@ -45,6 +52,7 @@ export const useLocalConversations = (): LocalConversationState => {
   const [messages, setMessages] = useState<Message[]>(EMPTY_MESSAGES);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const pendingConversationIdRef = useRef<string | null>(null);
 
   const getKey = useCallback(() => {
     if (!store) {
@@ -101,11 +109,7 @@ export const useLocalConversations = (): LocalConversationState => {
     const boot = async () => {
       setIsLoading(true);
       try {
-        let list = await service.listConversations();
-        if (list.length === 0) {
-          const created = await service.createConversation();
-          list = [created];
-        }
+        const list = await service.listConversations();
         if (!active) {
           return;
         }
@@ -165,14 +169,10 @@ export const useLocalConversations = (): LocalConversationState => {
   }, [conversations, service]);
 
   const createConversation = useCallback(async () => {
-    if (!service) {
-      return;
-    }
-    const created = await service.createConversation();
-    await refresh();
-    setActiveConversationId(created.id);
+    pendingConversationIdRef.current = null;
+    setActiveConversationId(null);
     setMessages(EMPTY_MESSAGES);
-  }, [refresh, service]);
+  }, []);
 
   const openConversation = useCallback(
     async (conversationId: string) => {
@@ -190,17 +190,27 @@ export const useLocalConversations = (): LocalConversationState => {
       if (!service) {
         return;
       }
-      let conversationId = activeConversationId;
-      if (!conversationId) {
-        const created = await service.createConversation();
-        conversationId = created.id;
-        setActiveConversationId(conversationId);
-      }
       setMessages((prev) => [...prev, message]);
+      const queuedConversationId =
+        activeConversationId ??
+        pendingConversationIdRef.current ??
+        createConversationId();
+      if (!activeConversationId && !pendingConversationIdRef.current) {
+        pendingConversationIdRef.current = queuedConversationId;
+      }
       try {
-        await service.appendMessage(conversationId, message);
+        const nextId = await service.appendMessage(queuedConversationId, message);
+        if (pendingConversationIdRef.current === queuedConversationId) {
+          pendingConversationIdRef.current = null;
+        }
+        if (activeConversationId !== nextId) {
+          setActiveConversationId(nextId);
+        }
         await refresh();
       } catch (caught) {
+        if (pendingConversationIdRef.current === queuedConversationId) {
+          pendingConversationIdRef.current = null;
+        }
         setError(
           caught instanceof Error ? caught.message : "Unable to save message."
         );

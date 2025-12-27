@@ -42,7 +42,7 @@ Violating these principles is a product bug.
 - When a reply is requested, it renders as text and is spoken aloud.
 
 ### 4.2 Text Turns
-- The text composer is visible beneath the journal stream with a toggle to collapse it.
+- The text composer is hidden by default and revealed in the sticky top controls above the journal stream; it auto-collapses after send.
 - Submitting text always adds a journal entry to the stream.
 - Replies are only requested when the text includes an explicit, direct command.
 - Voice capture remains the primary workflow.
@@ -99,12 +99,14 @@ The system is a three-hop pipeline:
 - All voice turns render as text in the journal pane.
 - Voice transcripts are merged into a single paragraph before processing or playback.
 - The journal entries pane stays page-sized; the entry stream fills the remaining height and scrolls vertically so entries never resize the pane.
+- Past journals render as a full-width white canvas with plain text blocks for entries (no card styling), while the homepage keeps the split card layout.
+- Past journals use a sticky header for mic controls and the optional text composer above the stream; the homepage keeps the dedicated voice controls card.
 - Replies render Markdown lists, code blocks, and inline emphasis (bold/italic/inline code).
 - Spoken audio strips saved-update blocks to stay concise.
 
 ### 8.4 Text Entry Visibility
-- The text composer is visible by default.
-- A labeled toggle in the journal header reveals it; a hide control sits next to Send.
+- The text composer is collapsed by default.
+- A labeled toggle in the journal header reveals it above the stream; a hide control sits next to Send.
 - Text submissions always create a journal entry; the composer auto-collapses after send and replies still require explicit requests.
 
 ### 8.5 Keyboard Shortcuts
@@ -118,10 +120,12 @@ The system is a three-hop pipeline:
 - On desktop, the conversation sidebar is a full-height left rail aligned to the viewport edge with square corners.
 - The sidebar is collapsible and defaults to closed; a header toggle reopens it.
 - On mobile, selecting a past conversation or starting a new chat closes the sidebar to reveal the journal.
+- On mobile, the journal entries panel stays tall enough to keep the stream readable.
 - On desktop, the sidebar stays open after selecting history, and its open/closed state persists across sessions.
 - The sidebar shows a loading state until local conversation history hydrates on the client.
-- Conversation rows show a timestamp and a short preview snippet from the conversation start with ellipsis, ordered newest to oldest.
-- New conversations default to an "Untitled chat" title until the first entry is saved; the first entry snippet becomes the title unless renamed.
+- Conversation rows show title-only entries (no preview or timestamp) with a simple action menu; pinned and recent chats share the main list, ordered newest to oldest.
+- Conversations are created when the first entry is saved; the first entry snippet becomes the title unless renamed, falling back to "Untitled chat" if empty.
+- Past journals hide the top navigation bar; the homepage keeps it visible.
 
 ### 8.7 First-Run Welcome
 ### 8.7 New Journal Welcome
@@ -131,6 +135,9 @@ The system is a three-hop pipeline:
 
 ### 8.8 Navigation
 - The Hey brand link always routes to Home and starts a new chat.
+
+### 8.9 Privacy Sentence
+- No standalone privacy sentence appears on the journal surface.
 
 ## 9. Tone and Reply Style
 - Helpful, calm, and concise.

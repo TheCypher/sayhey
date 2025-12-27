@@ -32,11 +32,15 @@
 - The journal stays silent unless the user issues a direct command.
 - Text submissions always add a journal entry; replies require explicit commands.
 - Journal entries live in a page-sized stream that stays fixed and scrolls within the pane.
+- Past journals render as a full-width white canvas with plain text entries (no card styling), while the homepage keeps the split card layout.
+- Past journals use a sticky header for mic controls and the optional text composer above the stream; the homepage keeps the dedicated voice controls card.
 - Stop audio clears the entire queue.
 - Low-confidence transcripts still receive replies; field updates are suppressed server-side.
-- The text composer is collapsed by default and revealed via a header toggle; the hide control sits next to Send and the composer auto-collapses after submit.
+- The text composer is collapsed by default and revealed via a header toggle above the stream; the hide control sits next to Send and the composer auto-collapses after submit.
 - Replies render Markdown blocks with inline emphasis (bold/italic/inline code).
-- The layout uses a device-width viewport so the history, voice controls, and journal panes stack on small screens.
+- The layout uses a device-width viewport so the history rail and journal pane stack on small screens.
+- Past journals hide the top navigation bar; the homepage keeps it visible.
+- On mobile, the journal entries panel stays tall enough to keep the stream readable.
 - On mobile, selecting a past conversation or starting a new chat closes the sidebar to reveal the journal; desktop keeps the sidebar open and persists its open/closed state.
 - When the active journal has no saved entries after history hydration, the journal stream renders a welcome tour even if other journals have entries.
 

@@ -83,10 +83,14 @@ export const createConversationService = (options: {
     return decryptTranscript(payload, { conversationId, key });
   };
 
-  const appendMessage = async (conversationId: string, message: Message) => {
-    const existingTranscript = await loadConversation(conversationId);
+  const appendMessage = async (
+    conversationId: string | null,
+    message: Message
+  ) => {
+    const targetId = conversationId ?? createId();
+    const existingTranscript = await loadConversation(targetId);
     const transcript: Transcript = existingTranscript ?? {
-      conversationId,
+      conversationId: targetId,
       messages: [],
       schemaVersion: SCHEMA_VERSION,
     };
@@ -94,13 +98,13 @@ export const createConversationService = (options: {
 
     const key = await options.getKey();
     const payload = await encryptTranscript(transcript, {
-      conversationId,
+      conversationId: targetId,
       key,
       now,
     });
-    await options.store.saveTranscript({ conversationId, payload });
+    await options.store.saveTranscript({ conversationId: targetId, payload });
 
-    const existingIndex = await options.store.getConversation(conversationId);
+    const existingIndex = await options.store.getConversation(targetId);
     const timestamp = now();
     const previewSource = transcript.messages[0] ?? message;
     const preview = buildPreview(previewSource);
@@ -111,7 +115,7 @@ export const createConversationService = (options: {
       ? preview || DEFAULT_TITLE
       : existingIndex?.title ?? DEFAULT_TITLE;
     const updatedIndex: ConversationIndexItem = {
-      id: conversationId,
+      id: targetId,
       title: nextTitle,
       preview,
       createdAt: existingIndex?.createdAt ?? timestamp,
@@ -122,6 +126,7 @@ export const createConversationService = (options: {
       schemaVersion: existingIndex?.schemaVersion ?? SCHEMA_VERSION,
     };
     await options.store.saveConversation(updatedIndex);
+    return targetId;
   };
 
   const ensurePreviewFromTranscript = async (conversationId: string) => {

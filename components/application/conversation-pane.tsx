@@ -485,80 +485,105 @@ export const buildHomeHrefWithoutNewChat = (
   return query ? `/?${query}` : "/";
 };
 
-const WelcomePanel = () => (
-  <div
-    data-state="welcome"
-    className="space-y-6 rounded-2xl border border-[color:var(--page-border)] bg-white/80 p-5 shadow-sm shadow-black/5"
-  >
-    <div className="space-y-2">
-      <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--page-muted)]">
-        Welcome
-      </p>
-      <h3 className="font-display text-2xl text-[color:var(--page-ink-strong)]">
-        Welcome to Hey
-      </h3>
-      <p className="text-sm text-[color:var(--page-muted)]">
-        Your voice-first journal. Here is a quick tour and the philosophy
-        behind it.
-      </p>
-    </div>
-    <div className="grid gap-6 md:grid-cols-2">
-      <div className="space-y-3">
-        <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--page-muted)]">
-          Quick tour
-        </p>
-        <ul className="space-y-3 text-sm text-[color:var(--page-ink-strong)]">
-          {WELCOME_TOUR_ITEMS.map((item) => (
-            <li key={item.title} className="flex items-start gap-3">
-              <span
-                className="mt-2 h-1.5 w-1.5 rounded-full bg-[color:var(--page-accent-strong)]"
-                aria-hidden="true"
-              />
-              <div className="space-y-1">
-                <p className="font-semibold">{item.title}</p>
-                <p className="text-xs text-[color:var(--page-muted)]">
-                  {item.description}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div className="space-y-3">
-        <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--page-muted)]">
-          Our philosophy
-        </p>
-        <ul className="space-y-3 text-sm text-[color:var(--page-ink-strong)]">
-          {WELCOME_PHILOSOPHY_ITEMS.map((item) => (
-            <li key={item.title} className="flex items-start gap-3">
-              <span
-                className="mt-2 h-1.5 w-1.5 rounded-full bg-[color:var(--page-accent)]"
-                aria-hidden="true"
-              />
-              <div className="space-y-1">
-                <p className="font-semibold">{item.title}</p>
-                <p className="text-xs text-[color:var(--page-muted)]">
-                  {item.description}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-    <div className="rounded-2xl border border-[color:var(--page-border)] bg-[color:var(--page-paper)]/80 p-4 text-sm text-[color:var(--page-muted)]">
-      <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--page-muted)]">
-        Try it now
-      </p>
-      <p className="mt-2 text-sm text-[color:var(--page-ink-strong)]">
-        Press Space or tap Talk to start your first entry. Use a direct command
-        if you want a reply.
-      </p>
-    </div>
-  </div>
-);
+const WelcomePanel = ({
+  variant = "plain",
+}: {
+  variant?: "plain" | "card";
+}) => {
+  const isCard = variant === "card";
 
-export function ConversationPane() {
+  return (
+    <div
+      data-state="welcome"
+      className={cn(
+        "space-y-6",
+        isCard &&
+          "rounded-2xl border border-[color:var(--page-border)] bg-white/80 p-5 shadow-sm shadow-black/5"
+      )}
+    >
+      <div className="space-y-2">
+        <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--page-muted)]">
+          Welcome
+        </p>
+        <h3 className="font-display text-2xl text-[color:var(--page-ink-strong)]">
+          Welcome to Hey
+        </h3>
+        <p className="text-sm text-[color:var(--page-muted)]">
+          Your voice-first journal. Here is a quick tour and the philosophy
+          behind it.
+        </p>
+      </div>
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="space-y-3">
+          <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--page-muted)]">
+            Quick tour
+          </p>
+          <ul className="space-y-3 text-sm text-[color:var(--page-ink-strong)]">
+            {WELCOME_TOUR_ITEMS.map((item) => (
+              <li key={item.title} className="flex items-start gap-3">
+                <span
+                  className="mt-2 h-1.5 w-1.5 rounded-full bg-[color:var(--page-accent-strong)]"
+                  aria-hidden="true"
+                />
+                <div className="space-y-1">
+                  <p className="font-semibold">{item.title}</p>
+                  <p className="text-xs text-[color:var(--page-muted)]">
+                    {item.description}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="space-y-3">
+          <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--page-muted)]">
+            Our philosophy
+          </p>
+          <ul className="space-y-3 text-sm text-[color:var(--page-ink-strong)]">
+            {WELCOME_PHILOSOPHY_ITEMS.map((item) => (
+              <li key={item.title} className="flex items-start gap-3">
+                <span
+                  className="mt-2 h-1.5 w-1.5 rounded-full bg-[color:var(--page-accent)]"
+                  aria-hidden="true"
+                />
+                <div className="space-y-1">
+                  <p className="font-semibold">{item.title}</p>
+                  <p className="text-xs text-[color:var(--page-muted)]">
+                    {item.description}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      <div
+        className={cn(
+          "text-sm text-[color:var(--page-muted)]",
+          isCard
+            ? "rounded-2xl border border-[color:var(--page-border)] bg-[color:var(--page-paper)]/80 p-4"
+            : "space-y-2"
+        )}
+      >
+        <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--page-muted)]">
+          Try it now
+        </p>
+        <p className="mt-2 text-sm text-[color:var(--page-ink-strong)]">
+          Press Space or tap Talk to start your first entry. Use a direct command
+          if you want a reply.
+        </p>
+      </div>
+    </div>
+  );
+};
+
+type ConversationPaneProps = {
+  initialView?: "home" | "history";
+};
+
+export function ConversationPane({
+  initialView = "home",
+}: ConversationPaneProps) {
   const {
     conversations,
     activeConversationId,
@@ -579,6 +604,7 @@ export function ConversationPane() {
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [isComposerVisible, setIsComposerVisible] = useState(false);
+  const [viewMode, setViewMode] = useState<"home" | "history">(initialView);
   const { isDesktop, isSidebarOpen, closeSidebar, toggleSidebar } =
     useResponsiveSidebar();
   const streamRef = useRef<HTMLDivElement | null>(null);
@@ -607,15 +633,17 @@ export function ConversationPane() {
 
   const handleOpenConversation = useCallback(
     async (conversationId: string) => {
-      await openConversation(conversationId);
+      setViewMode("history");
       if (!isDesktop) {
         closeSidebar();
       }
+      await openConversation(conversationId);
     },
     [closeSidebar, isDesktop, openConversation]
   );
 
   const handleNewConversation = useCallback(async () => {
+    setViewMode("home");
     await createConversation();
     if (!isDesktop) {
       closeSidebar();
@@ -962,18 +990,23 @@ export function ConversationPane() {
   }, [ttsQueue.length]);
   const sidebarState = isSidebarOpen ? "open" : "closed";
   const sidebarToggleLabel = isSidebarOpen ? "Close sidebar" : "Open sidebar";
+  const isHistoryView = viewMode === "history";
 
   return (
     <div
-      className="relative h-[100dvh] overflow-x-hidden overflow-y-auto bg-[color:var(--page-bg)] text-[color:var(--page-ink)] md:overflow-hidden"
+      className={cn(
+        "relative h-[100dvh] overflow-x-hidden overflow-y-auto text-[color:var(--page-ink)] md:overflow-hidden",
+        isHistoryView ? "bg-white" : "bg-[color:var(--page-bg)]"
+      )}
       data-pane="conversation"
     >
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-32 top-12 h-72 w-72 rounded-full bg-[radial-gradient(circle_at_top,_rgba(198,214,226,0.6),_transparent_70%)] blur-2xl animate-drift" />
-        <div className="absolute right-[-8rem] top-1/4 h-96 w-96 rounded-full bg-[radial-gradient(circle_at_30%_30%,_rgba(244,216,172,0.6),_transparent_70%)] blur-3xl animate-drift-slow" />
-        <div className="absolute bottom-[-6rem] left-1/4 h-80 w-80 rounded-full bg-[radial-gradient(circle,_rgba(201,225,214,0.55),_transparent_70%)] blur-3xl animate-drift" />
-      </div>
-
+      {!isHistoryView && (
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -left-32 top-12 h-72 w-72 rounded-full bg-[radial-gradient(circle_at_top,_rgba(198,214,226,0.6),_transparent_70%)] blur-2xl animate-drift" />
+          <div className="absolute right-[-8rem] top-1/4 h-96 w-96 rounded-full bg-[radial-gradient(circle_at_30%_30%,_rgba(244,216,172,0.6),_transparent_70%)] blur-3xl animate-drift-slow" />
+          <div className="absolute bottom-[-6rem] left-1/4 h-80 w-80 rounded-full bg-[radial-gradient(circle,_rgba(201,225,214,0.55),_transparent_70%)] blur-3xl animate-drift" />
+        </div>
+      )}
       <div
         className="relative flex min-h-full w-full flex-col md:h-full md:flex-row"
         data-sidebar-state={sidebarState}
@@ -1000,180 +1033,194 @@ export function ConversationPane() {
           />
         </div>
 
-        <main className="flex min-h-[100dvh] flex-1 flex-col px-6 py-10 md:min-h-0 md:overflow-hidden md:px-10 md:py-12">
-          <div className="flex w-full max-w-6xl flex-1 min-h-0 flex-col gap-8 md:mx-auto">
-            <div className="flex items-center gap-3">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 text-[color:var(--page-muted)] hover:text-[color:var(--page-ink-strong)]"
-                data-control="sidebar-toggle"
-                aria-controls="conversation-sidebar"
-                aria-expanded={isSidebarOpen}
-                onClick={toggleSidebar}
-              >
-                {isSidebarOpen ? (
-                  <PanelLeftClose className="h-4 w-4" />
-                ) : (
-                  <PanelLeftOpen className="h-4 w-4" />
-                )}
-                <span className="sr-only">{sidebarToggleLabel}</span>
-              </Button>
-              <SiteNav current="home" />
-            </div>
-            <header className="flex flex-wrap items-center justify-between gap-4">
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--page-muted)]">
-                  Voice journal
-                </p>
-                <h1 className="font-display text-4xl text-[color:var(--page-ink-strong)]">
+        {isHistoryView ? (
+          <main
+            className="flex min-h-[100dvh] flex-1 flex-col bg-white px-6 py-3 md:min-h-0 md:overflow-hidden md:px-10 md:py-4"
+            data-layout="journal-canvas"
+          >
+            <div className="flex w-full flex-1 min-h-0 flex-col gap-3 md:mx-auto">
+              <div className="flex items-center justify-between gap-4">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 text-[color:var(--page-muted)] hover:text-[color:var(--page-ink-strong)]"
+                  data-control="sidebar-toggle"
+                  aria-controls="conversation-sidebar"
+                  aria-expanded={isSidebarOpen}
+                  onClick={toggleSidebar}
+                >
+                  {isSidebarOpen ? (
+                    <PanelLeftClose className="h-4 w-4" />
+                  ) : (
+                    <PanelLeftOpen className="h-4 w-4" />
+                  )}
+                  <span className="sr-only">{sidebarToggleLabel}</span>
+                </Button>
+                <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--page-muted)]">
                   Journal
-                </h1>
-              </div>
-              <div className="space-y-1 text-sm text-[color:var(--page-muted)]">
-                <p>
-                  Main control:{" "}
-                  <strong className="font-semibold text-[color:var(--page-ink-strong)]">
-                    Spacebar
-                  </strong>
-                  . Press{" "}
-                  <strong className="font-semibold text-[color:var(--page-ink-strong)]">
-                    Space
-                  </strong>{" "}
-                  to start, pause, or resume; double-tap{" "}
-                  <strong className="font-semibold text-[color:var(--page-ink-strong)]">
-                    Space
-                  </strong>{" "}
-                  to stop and send.
                 </p>
-                <p>Use a direct command if you want a reply.</p>
               </div>
-            </header>
 
-            <section className="flex flex-col gap-6 md:min-h-0 md:flex-1">
-              <div className="grid gap-6 md:flex-1 md:min-h-0 md:grid-cols-[0.9fr_1.1fr] md:grid-rows-[minmax(0,1fr)]">
-                <Card
-                  data-pane="voice-controls"
-                  className="bg-[color:var(--page-card)] shadow-xl shadow-black/5 md:sticky md:top-10 md:self-start"
+              <section
+                data-pane="journal-entries"
+                data-size="page"
+                data-layout="journal-canvas"
+                className="flex min-h-[60dvh] flex-1 flex-col md:min-h-0"
+              >
+                <div
+                  data-sticky="journal-controls"
+                  className="sticky top-0 z-20 border-b border-[color:var(--page-border)] bg-white/95 backdrop-blur"
                 >
-                  <CardHeader>
-                    <CardTitle>Voice controls</CardTitle>
-                    <CardDescription>
-                      Push to talk, then tap again to capture.{" "}
-                      <strong className="font-semibold text-[color:var(--page-ink-strong)]">
-                        Spacebar
-                      </strong>{" "}
-                      runs the mic: press{" "}
-                      <strong className="font-semibold text-[color:var(--page-ink-strong)]">
-                        Space
-                      </strong>{" "}
-                      to pause or resume; double-tap{" "}
-                      <strong className="font-semibold text-[color:var(--page-ink-strong)]">
-                        Space
-                      </strong>{" "}
-                      to stop and send.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                <div className="flex items-center gap-4">
-                  <Button
-                    data-control="mic"
-                    className={cn(
-                      "h-16 w-16 rounded-full text-xs font-semibold",
-                      voiceStatus === "recording"
-                        ? "bg-[color:var(--page-accent-strong)] text-white"
-                        : "bg-[color:var(--page-accent)] text-[color:var(--page-ink-strong)]"
-                    )}
-                    onClick={handleMicClick}
-                    aria-pressed={
-                      voiceStatus === "recording" || voiceStatus === "paused"
-                    }
-                    disabled={voiceStatus === "processing" || voiceStatus === "ready"}
-                  >
-                    {micButtonLabel}
-                  </Button>
-                  <div>
-                    <p className="text-sm font-semibold text-[color:var(--page-ink-strong)]">
-                      {micCopy.label}
-                    </p>
-                    <p className="text-xs text-[color:var(--page-muted)]">
-                      {micCopy.helper}
-                    </p>
-                  </div>
-                </div>
-
-                {voiceStatus === "processing" && (
-                  <p className="text-sm text-[color:var(--page-muted)]">
-                    Transcribing your entry...
-                  </p>
-                )}
-
-                {voiceStatus === "ready" && (
-                  <p className="text-sm text-[color:var(--page-muted)]">
-                    Preparing your entry...
-                  </p>
-                )}
-
-                {voiceError && (
-                  <p className="text-sm text-red-700">{voiceError}</p>
-                )}
-
-                {voiceNotice && (
-                  <p className="text-sm text-amber-700">{voiceNotice}</p>
-                )}
-
-                <div className="space-y-2 rounded-2xl border border-[color:var(--page-border)] bg-white/60 p-4">
-                  <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-[color:var(--page-muted)]">
-                    <span>Audio playback</span>
-                    <span>{audioLabel}</span>
-                  </div>
-                  <p className="text-sm text-[color:var(--page-muted)]">
-                    {audioQueueLabel}
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <Button
-                      data-control="stop-audio"
-                      variant="outline"
-                      size="sm"
-                      onClick={clearTts}
-                      disabled={ttsStatus === "idle" && ttsQueue.length === 0}
-                    >
-                      Stop audio
-                    </Button>
-                    {ttsError && (
-                      <span className="text-xs text-red-700">{ttsError}</span>
-                    )}
-                  </div>
-                </div>
-
-                {sendError && (
-                  <p className="text-sm text-red-700">{sendError}</p>
-                )}
-
-                {historyError && (
-                  <p className="text-sm text-red-700">{historyError}</p>
-                )}
-                  </CardContent>
-                </Card>
-
-                <Card
-                  data-pane="journal-entries"
-                  data-size="page"
-                  className="flex h-full min-h-0 flex-col bg-[color:var(--page-card)] shadow-xl shadow-black/5"
-                >
-                  <CardHeader>
+                <div className="mx-auto w-full max-w-3xl space-y-1 px-1 py-2">
                     <div
                       data-location="journal-header"
                       className="flex flex-wrap items-start justify-between gap-4"
                     >
                       <div className="space-y-1">
-                        <CardTitle>Journal entries</CardTitle>
-                        <CardDescription>
-                          Voice turns are transcribed. Text entries and replies appear below.
-                        </CardDescription>
+                        <p className="text-[10px] uppercase tracking-[0.25em] text-[color:var(--page-muted)]">
+                          Voice journal
+                        </p>
+                        <p className="text-xs leading-5 text-[color:var(--page-muted)]">
+                          Main control:{" "}
+                          <strong className="font-semibold text-[color:var(--page-ink-strong)]">
+                            Spacebar
+                          </strong>
+                          . Press{" "}
+                          <strong className="font-semibold text-[color:var(--page-ink-strong)]">
+                            Space
+                          </strong>{" "}
+                          to start, pause, or resume; double-tap{" "}
+                          <strong className="font-semibold text-[color:var(--page-ink-strong)]">
+                            Space
+                          </strong>{" "}
+                          to stop and send.
+                        </p>
                       </div>
-                      {!isComposerVisible && (
+                    {!isComposerVisible && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-3 text-xs"
+                        data-control="composer-toggle"
+                        aria-controls={COMPOSER_PANEL_ID}
+                        aria-expanded={isComposerVisible}
+                        onClick={handleComposerToggle}
+                        >
+                          Show text entry
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div
+                        data-pane="voice-controls"
+                        className="flex items-center gap-3"
+                      >
+                        <Button
+                          data-control="mic"
+                          className={cn(
+                            "h-12 w-12 rounded-full text-[11px] font-semibold",
+                            voiceStatus === "recording"
+                              ? "bg-[color:var(--page-accent-strong)] text-white"
+                              : "bg-[color:var(--page-accent)] text-[color:var(--page-ink-strong)]"
+                          )}
+                          onClick={handleMicClick}
+                          aria-pressed={
+                            voiceStatus === "recording" || voiceStatus === "paused"
+                          }
+                          disabled={
+                            voiceStatus === "processing" || voiceStatus === "ready"
+                          }
+                        >
+                          {micButtonLabel}
+                        </Button>
+                        <div>
+                          <p className="text-[13px] font-semibold text-[color:var(--page-ink-strong)]">
+                            {micCopy.label}
+                          </p>
+                          <p className="text-[11px] text-[color:var(--page-muted)]">
+                            {micCopy.helper}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--page-muted)]">
+                          {audioLabel}
+                        </span>
+                        <span className="text-[12px] text-[color:var(--page-muted)]">
+                          {audioQueueLabel}
+                        </span>
+                        <Button
+                          data-control="stop-audio"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-3 text-xs"
+                          onClick={clearTts}
+                          disabled={ttsStatus === "idle" && ttsQueue.length === 0}
+                        >
+                          Stop audio
+                        </Button>
+                        {ttsError && (
+                          <span className="text-xs text-red-700">{ttsError}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {voiceStatus === "processing" && (
+                      <p className="text-sm text-[color:var(--page-muted)]">
+                        Transcribing your entry...
+                      </p>
+                    )}
+
+                    {voiceStatus === "ready" && (
+                      <p className="text-sm text-[color:var(--page-muted)]">
+                        Preparing your entry...
+                      </p>
+                    )}
+
+                    {voiceError && (
+                      <p className="text-sm text-red-700">{voiceError}</p>
+                    )}
+
+                    {voiceNotice && (
+                      <p className="text-sm text-amber-700">{voiceNotice}</p>
+                    )}
+
+                    {sendError && (
+                      <p className="text-sm text-red-700">{sendError}</p>
+                    )}
+
+                    {historyError && (
+                      <p className="text-sm text-red-700">{historyError}</p>
+                    )}
+
+                    <form
+                      id={COMPOSER_PANEL_ID}
+                      data-control="composer"
+                      hidden={!isComposerVisible}
+                      className="space-y-2"
+                      onSubmit={handleComposerSubmit}
+                    >
+                      <label
+                        htmlFor="journal-composer"
+                        className="text-xs uppercase tracking-[0.2em] text-[color:var(--page-muted)]"
+                      >
+                        Journal entry
+                      </label>
+                      <Textarea
+                        id="journal-composer"
+                        name="journal-composer"
+                        ref={composerRef}
+                        value={draft}
+                        onChange={(event) => setDraft(event.target.value)}
+                        rows={1}
+                        className="min-h-[44px] resize-none bg-white"
+                        placeholder="Use a direct command if you want a reply."
+                      />
+                      <div className="flex items-center justify-end gap-3">
                         <Button
                           type="button"
                           variant="outline"
@@ -1183,102 +1230,336 @@ export function ConversationPane() {
                           aria-expanded={isComposerVisible}
                           onClick={handleComposerToggle}
                         >
-                          Show text entry
+                          Hide text entry
                         </Button>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="flex min-h-0 flex-1 flex-col gap-6">
+                        <Button type="submit" size="sm" disabled={isSending}>
+                          {isSending ? "Sending" : "Send"}
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+
                 <div
                   ref={streamRef}
                   data-stream="messages"
                   data-scroll="journal-entries"
-                  className="flex-1 min-h-0 space-y-4 overflow-y-auto rounded-2xl border border-[color:var(--page-border)] bg-white/70 p-4"
+                  className="flex-1 overflow-y-auto"
                 >
-                  {isHistoryLoading ? (
-                    <div className="text-sm text-[color:var(--page-muted)]">
-                      Loading your journal history...
-                    </div>
-                  ) : messages.length === 0 ? (
-                    shouldShowWelcome ? (
-                      <WelcomePanel />
-                    ) : (
+                  <div className="mx-auto w-full max-w-3xl space-y-5 px-1 py-3">
+                    {isHistoryLoading ? (
                       <div className="text-sm text-[color:var(--page-muted)]">
-                        Say your entry to get started.
+                        Loading your journal history...
                       </div>
-                    )
-                  ) : (
-                    messages.map((message) => (
-                      <div
-                        key={message.id}
-                        className={cn(
-                          "space-y-2 rounded-2xl border p-4",
-                          message.role === "user"
-                            ? "ml-auto border-[color:var(--page-accent)]/50 bg-[color:var(--page-accent)]/15"
-                            : "border-[color:var(--page-border)] bg-white"
-                        )}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--page-muted)]">
+                    ) : messages.length === 0 ? (
+                      shouldShowWelcome ? (
+                        <WelcomePanel />
+                      ) : (
+                        <div className="text-sm text-[color:var(--page-muted)]">
+                          Say your entry to get started.
+                        </div>
+                      )
+                    ) : (
+                      messages.map((message) => (
+                        <div key={message.id} className="space-y-3">
+                          <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--page-muted)]">
                             {message.role === "user" ? "Entry" : "Reply"}
-                          </span>
+                          </div>
+                          <div className="space-y-3 text-base leading-7 text-[color:var(--page-ink-strong)]">
+                            {renderMarkdown(message.content)}
+                          </div>
                         </div>
-                        <div className="space-y-3 text-sm text-[color:var(--page-ink-strong)]">
-                          {renderMarkdown(message.content)}
+                      ))
+                    )}
+                  </div>
+                </div>
+              </section>
+            </div>
+          </main>
+        ) : (
+          <main className="flex min-h-[100dvh] flex-1 flex-col px-6 py-10 md:min-h-0 md:overflow-hidden md:px-10 md:py-12">
+            <div className="flex w-full max-w-6xl flex-1 min-h-0 flex-col gap-8 md:mx-auto">
+              <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 text-[color:var(--page-muted)] hover:text-[color:var(--page-ink-strong)]"
+                  data-control="sidebar-toggle"
+                  aria-controls="conversation-sidebar"
+                  aria-expanded={isSidebarOpen}
+                  onClick={toggleSidebar}
+                >
+                  {isSidebarOpen ? (
+                    <PanelLeftClose className="h-4 w-4" />
+                  ) : (
+                    <PanelLeftOpen className="h-4 w-4" />
+                  )}
+                  <span className="sr-only">{sidebarToggleLabel}</span>
+                </Button>
+                <SiteNav current="home" />
+              </div>
+              <header className="flex flex-wrap items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--page-muted)]">
+                    Voice journal
+                  </p>
+                  <h1 className="font-display text-4xl text-[color:var(--page-ink-strong)]">
+                    Journal
+                  </h1>
+                </div>
+                <div className="space-y-1 text-sm text-[color:var(--page-muted)]">
+                  <p>
+                    Main control:{" "}
+                    <strong className="font-semibold text-[color:var(--page-ink-strong)]">
+                      Spacebar
+                    </strong>
+                    . Press{" "}
+                    <strong className="font-semibold text-[color:var(--page-ink-strong)]">
+                      Space
+                    </strong>{" "}
+                    to start, pause, or resume; double-tap{" "}
+                    <strong className="font-semibold text-[color:var(--page-ink-strong)]">
+                      Space
+                    </strong>{" "}
+                    to stop and send.
+                  </p>
+                  <p>Use a direct command if you want a reply.</p>
+                </div>
+              </header>
+
+              <section className="flex flex-col gap-6 md:min-h-0 md:flex-1">
+                <div className="grid gap-6 md:flex-1 md:min-h-0 md:grid-cols-[0.9fr_1.1fr] md:grid-rows-[minmax(0,1fr)]">
+                  <Card
+                    data-pane="voice-controls"
+                    className="bg-[color:var(--page-card)] shadow-xl shadow-black/5 md:sticky md:top-10 md:self-start"
+                  >
+                    <CardHeader>
+                      <CardTitle>Voice controls</CardTitle>
+                      <CardDescription>
+                        Push to talk, then tap again to capture.{" "}
+                        <strong className="font-semibold text-[color:var(--page-ink-strong)]">
+                          Spacebar
+                        </strong>{" "}
+                        runs the mic: press{" "}
+                        <strong className="font-semibold text-[color:var(--page-ink-strong)]">
+                          Space
+                        </strong>{" "}
+                        to pause or resume; double-tap{" "}
+                        <strong className="font-semibold text-[color:var(--page-ink-strong)]">
+                          Space
+                        </strong>{" "}
+                        to stop and send.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="flex items-center gap-4">
+                        <Button
+                          data-control="mic"
+                          className={cn(
+                            "h-16 w-16 rounded-full text-xs font-semibold",
+                            voiceStatus === "recording"
+                              ? "bg-[color:var(--page-accent-strong)] text-white"
+                              : "bg-[color:var(--page-accent)] text-[color:var(--page-ink-strong)]"
+                          )}
+                          onClick={handleMicClick}
+                          aria-pressed={
+                            voiceStatus === "recording" || voiceStatus === "paused"
+                          }
+                          disabled={
+                            voiceStatus === "processing" || voiceStatus === "ready"
+                          }
+                        >
+                          {micButtonLabel}
+                        </Button>
+                        <div>
+                          <p className="text-sm font-semibold text-[color:var(--page-ink-strong)]">
+                            {micCopy.label}
+                          </p>
+                          <p className="text-xs text-[color:var(--page-muted)]">
+                            {micCopy.helper}
+                          </p>
                         </div>
                       </div>
-                    ))
-                  )}
-                </div>
 
-                <form
-                  id={COMPOSER_PANEL_ID}
-                  data-control="composer"
-                  hidden={!isComposerVisible}
-                  className="space-y-3 rounded-2xl border border-[color:var(--page-border)] bg-white/70 p-4"
-                  onSubmit={handleComposerSubmit}
-                >
-                  <label
-                    htmlFor="journal-composer"
-                    className="text-xs uppercase tracking-[0.2em] text-[color:var(--page-muted)]"
+                      {voiceStatus === "processing" && (
+                        <p className="text-sm text-[color:var(--page-muted)]">
+                          Transcribing your entry...
+                        </p>
+                      )}
+
+                      {voiceStatus === "ready" && (
+                        <p className="text-sm text-[color:var(--page-muted)]">
+                          Preparing your entry...
+                        </p>
+                      )}
+
+                      {voiceError && (
+                        <p className="text-sm text-red-700">{voiceError}</p>
+                      )}
+
+                      {voiceNotice && (
+                        <p className="text-sm text-amber-700">{voiceNotice}</p>
+                      )}
+
+                      <div className="space-y-2 rounded-2xl border border-[color:var(--page-border)] bg-white/60 p-4">
+                        <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-[color:var(--page-muted)]">
+                          <span>Audio playback</span>
+                          <span>{audioLabel}</span>
+                        </div>
+                        <p className="text-sm text-[color:var(--page-muted)]">
+                          {audioQueueLabel}
+                        </p>
+                        <div className="flex items-center gap-3">
+                          <Button
+                            data-control="stop-audio"
+                            variant="outline"
+                            size="sm"
+                            onClick={clearTts}
+                            disabled={ttsStatus === "idle" && ttsQueue.length === 0}
+                          >
+                            Stop audio
+                          </Button>
+                          {ttsError && (
+                            <span className="text-xs text-red-700">{ttsError}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {sendError && (
+                        <p className="text-sm text-red-700">{sendError}</p>
+                      )}
+
+                      {historyError && (
+                        <p className="text-sm text-red-700">{historyError}</p>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card
+                    data-pane="journal-entries"
+                    data-size="page"
+                    className="flex h-full min-h-[60dvh] flex-col bg-[color:var(--page-card)] shadow-xl shadow-black/5 md:min-h-0"
                   >
-                    Journal entry
-                  </label>
-                  <Textarea
-                    id="journal-composer"
-                    name="journal-composer"
-                    ref={composerRef}
-                    value={draft}
-                    onChange={(event) => setDraft(event.target.value)}
-                    placeholder="Use a direct command if you want a reply."
-                  />
-                  <div className="flex items-center justify-end gap-3">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      data-control="composer-toggle"
-                      aria-controls={COMPOSER_PANEL_ID}
-                      aria-expanded={isComposerVisible}
-                      onClick={handleComposerToggle}
-                    >
-                      Hide text entry
-                    </Button>
-                    <Button type="submit" size="sm" disabled={isSending}>
-                      {isSending ? "Sending" : "Send"}
-                    </Button>
-                  </div>
-                </form>
+                    <CardHeader>
+                      <div
+                        data-location="journal-header"
+                        className="flex flex-wrap items-start justify-between gap-4"
+                      >
+                        <div className="space-y-1">
+                          <CardTitle>Journal entries</CardTitle>
+                          <CardDescription>
+                            Voice turns are transcribed. Text entries and replies appear below.
+                          </CardDescription>
+                        </div>
+                        {!isComposerVisible && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            data-control="composer-toggle"
+                            aria-controls={COMPOSER_PANEL_ID}
+                            aria-expanded={isComposerVisible}
+                            onClick={handleComposerToggle}
+                          >
+                            Show text entry
+                          </Button>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="flex min-h-0 flex-1 flex-col gap-6">
+                      <div
+                        ref={streamRef}
+                        data-stream="messages"
+                        data-scroll="journal-entries"
+                        className="flex-1 min-h-0 space-y-4 overflow-y-auto rounded-2xl border border-[color:var(--page-border)] bg-white/70 p-4"
+                      >
+                        {isHistoryLoading ? (
+                          <div className="text-sm text-[color:var(--page-muted)]">
+                            Loading your journal history...
+                          </div>
+                        ) : messages.length === 0 ? (
+                          shouldShowWelcome ? (
+                            <WelcomePanel variant="card" />
+                          ) : (
+                            <div className="text-sm text-[color:var(--page-muted)]">
+                              Say your entry to get started.
+                            </div>
+                          )
+                        ) : (
+                          messages.map((message) => (
+                            <div
+                              key={message.id}
+                              className={cn(
+                                "space-y-2 rounded-2xl border p-4",
+                                message.role === "user"
+                                  ? "ml-auto border-[color:var(--page-accent)]/50 bg-[color:var(--page-accent)]/15"
+                                  : "border-[color:var(--page-border)] bg-white"
+                              )}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--page-muted)]">
+                                  {message.role === "user" ? "Entry" : "Reply"}
+                                </span>
+                              </div>
+                              <div className="space-y-3 text-sm text-[color:var(--page-ink-strong)]">
+                                {renderMarkdown(message.content)}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
 
-                <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--page-muted)]">
-                  Voice-first journal. Use a direct command to get a reply.
+                      <form
+                        id={COMPOSER_PANEL_ID}
+                        data-control="composer"
+                        hidden={!isComposerVisible}
+                        className="space-y-3 rounded-2xl border border-[color:var(--page-border)] bg-white/70 p-4"
+                        onSubmit={handleComposerSubmit}
+                      >
+                        <label
+                          htmlFor="journal-composer"
+                          className="text-xs uppercase tracking-[0.2em] text-[color:var(--page-muted)]"
+                        >
+                          Journal entry
+                        </label>
+                        <Textarea
+                          id="journal-composer"
+                          name="journal-composer"
+                          ref={composerRef}
+                          value={draft}
+                          onChange={(event) => setDraft(event.target.value)}
+                          placeholder="Use a direct command if you want a reply."
+                        />
+                        <div className="flex items-center justify-end gap-3">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            data-control="composer-toggle"
+                            aria-controls={COMPOSER_PANEL_ID}
+                            aria-expanded={isComposerVisible}
+                            onClick={handleComposerToggle}
+                          >
+                            Hide text entry
+                          </Button>
+                          <Button type="submit" size="sm" disabled={isSending}>
+                            {isSending ? "Sending" : "Send"}
+                          </Button>
+                        </div>
+                      </form>
+
+                      <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--page-muted)]">
+                        Voice-first journal. Use a direct command to get a reply.
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </section>
-          </div>
-        </main>
+              </section>
+            </div>
+          </main>
+        )}
+
       </div>
     </div>
   );

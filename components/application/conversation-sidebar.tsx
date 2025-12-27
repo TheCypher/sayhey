@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Archive,
+  ChevronDown,
   Library,
+  MoreHorizontal,
   PanelLeftClose,
   Pencil,
   Pin,
@@ -32,19 +34,6 @@ type ConversationSidebarProps = {
   isLoading?: boolean;
 };
 
-const formatTimestamp = (timestamp: number) => {
-  const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
-};
-
 export const ConversationSidebar = ({
   conversations,
   activeConversationId,
@@ -62,6 +51,22 @@ export const ConversationSidebar = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
   const [archivedOpen, setArchivedOpen] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleDocumentClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target || target.closest('[data-menu="conversation-actions"]')) {
+        return;
+      }
+      setOpenMenuId(null);
+    };
+
+    document.addEventListener("click", handleDocumentClick);
+    return () => {
+      document.removeEventListener("click", handleDocumentClick);
+    };
+  }, []);
 
   const { pinned, recent, archived } = useMemo(() => {
     const sortByNewest = (items: ConversationIndexItem[]) =>
@@ -106,16 +111,14 @@ export const ConversationSidebar = ({
   const renderConversation = (item: ConversationIndexItem) => {
     const isActive = item.id === activeConversationId;
     const title = item.title?.trim() || "Untitled chat";
-    const preview = item.preview?.trim();
-    const previewText = preview ? `${preview}...` : "No entries yet.";
-    const timestamp = formatTimestamp(item.updatedAt);
+    const isMenuOpen = openMenuId === item.id;
     return (
       <div
         key={item.id}
         className={cn(
-          "group flex items-start gap-2 rounded-lg px-2 py-1.5 text-sm transition",
+          "group relative flex items-center justify-between gap-2 rounded-2xl px-3 py-2 text-base transition",
           isActive
-            ? "bg-white/90 text-[color:var(--page-ink-strong)] shadow-sm shadow-black/5"
+            ? "bg-[color:var(--page-bg)] text-[color:var(--page-ink-strong)]"
             : "text-[color:var(--page-ink)] hover:bg-white/80"
         )}
         data-active={isActive ? "true" : undefined}
@@ -147,80 +150,95 @@ export const ConversationSidebar = ({
           <>
             <button
               type="button"
-              className="flex min-w-0 flex-1 items-start gap-2 text-left"
+              className="flex min-w-0 flex-1 items-center gap-2 text-left"
               onClick={() => onOpenConversation(item.id)}
               aria-current={isActive ? "page" : undefined}
             >
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium">{title}</span>
-                <span
-                  className="block truncate text-xs text-[color:var(--page-muted)]"
-                  data-role="preview"
-                >
-                  {previewText}
-                </span>
-                <span
-                  className="mt-1 block text-[0.65rem] uppercase tracking-[0.2em] text-[color:var(--page-muted)]"
-                  data-role="timestamp"
-                  title={timestamp}
-                >
-                  {timestamp}
-                </span>
+              <span className="min-w-0 flex-1 whitespace-normal break-words font-medium">
+                {title}
               </span>
             </button>
-            <div className="flex items-center gap-1 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
+            <div
+              className={cn(
+                "relative flex items-center",
+                isMenuOpen
+                  ? "opacity-100"
+                  : "opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100"
+              )}
+              data-menu="conversation-actions"
+            >
               <Button
                 type="button"
                 size="icon"
                 variant="ghost"
-                className="h-7 w-7 text-[color:var(--page-muted)] hover:text-[color:var(--page-ink-strong)]"
-                onClick={() => startRename(item)}
-                aria-label="Rename conversation"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7 text-[color:var(--page-muted)] hover:text-[color:var(--page-ink-strong)]"
-                onClick={() => onPinConversation(item.id, !item.pinned)}
-                aria-label={item.pinned ? "Unpin conversation" : "Pin conversation"}
-              >
-                <Pin
-                  className={cn(
-                    "h-3.5 w-3.5",
-                    item.pinned ? "text-[color:var(--page-accent-strong)]" : ""
-                  )}
-                />
-              </Button>
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7 text-[color:var(--page-muted)] hover:text-[color:var(--page-ink-strong)]"
-                onClick={() => onArchiveConversation(item.id, !item.archived)}
-                aria-label={
-                  item.archived ? "Unarchive conversation" : "Archive conversation"
+                className="h-8 w-8 text-[color:var(--page-muted)] hover:text-[color:var(--page-ink-strong)]"
+                onClick={() =>
+                  setOpenMenuId(isMenuOpen ? null : item.id)
                 }
+                aria-label="Open conversation actions"
+                aria-expanded={isMenuOpen}
               >
-                <Archive
-                  className={cn(
-                    "h-3.5 w-3.5",
-                    item.archived ? "text-[color:var(--page-accent-strong)]" : ""
-                  )}
-                />
+                <MoreHorizontal className="h-4 w-4" />
               </Button>
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7 text-[color:var(--page-muted)] hover:text-red-700"
-                onClick={() => onDeleteConversation(item.id)}
-                aria-label="Delete conversation"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
+              {isMenuOpen && (
+                <div
+                  className="absolute right-0 top-full z-20 mt-2 w-44 rounded-xl border border-[color:var(--page-border)] bg-white p-1 shadow-sm shadow-black/10"
+                  data-menu="conversation-actions"
+                >
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-full justify-start gap-2 px-2 text-xs"
+                    onClick={() => {
+                      setOpenMenuId(null);
+                      startRename(item);
+                    }}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    Rename
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-full justify-start gap-2 px-2 text-xs"
+                    onClick={() => {
+                      setOpenMenuId(null);
+                      onPinConversation(item.id, !item.pinned);
+                    }}
+                  >
+                    <Pin className="h-3.5 w-3.5" />
+                    {item.pinned ? "Unpin" : "Pin"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-full justify-start gap-2 px-2 text-xs"
+                    onClick={() => {
+                      setOpenMenuId(null);
+                      onArchiveConversation(item.id, !item.archived);
+                    }}
+                  >
+                    <Archive className="h-3.5 w-3.5" />
+                    {item.archived ? "Unarchive" : "Archive"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-full justify-start gap-2 px-2 text-xs text-red-700 hover:text-red-700"
+                    onClick={() => {
+                      setOpenMenuId(null);
+                      onDeleteConversation(item.id);
+                    }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete
+                  </Button>
+                </div>
+              )}
             </div>
           </>
         )}
@@ -230,15 +248,16 @@ export const ConversationSidebar = ({
 
   const renderConversationList = (
     items: ConversationIndexItem[],
-    emptyLabel: string = "No conversations."
+    emptyLabel: string = "No chats."
   ) =>
     items.length === 0 ? (
-      <p className="text-xs text-[color:var(--page-muted)]">{emptyLabel}</p>
+      <p className="text-sm text-[color:var(--page-muted)]">{emptyLabel}</p>
     ) : (
       <div className="space-y-1">{items.map(renderConversation)}</div>
     );
 
-  const hasChats = pinned.length + recent.length > 0;
+  const primaryChats = [...pinned, ...recent];
+  const hasChats = primaryChats.length > 0;
 
   return (
     <aside
@@ -247,7 +266,7 @@ export const ConversationSidebar = ({
       data-pane="conversation-sidebar"
     >
       <div
-        className="space-y-3 border-b border-[color:var(--page-border)] px-4 pb-4 pt-5"
+        className="space-y-2 px-4 pb-4 pt-5"
         data-section="sidebar-actions"
       >
         {onCloseSidebar && (
@@ -267,67 +286,56 @@ export const ConversationSidebar = ({
         <Button
           type="button"
           variant="ghost"
-          className="h-10 w-full justify-start gap-2 rounded-full border border-[color:var(--page-border)] bg-white/80 px-4 text-sm font-medium text-[color:var(--page-ink-strong)] shadow-sm shadow-black/5 hover:bg-white hover:text-[color:var(--page-ink-strong)]"
+          className="h-10 w-full justify-start gap-3 rounded-none px-2 text-base font-medium text-[color:var(--page-ink-strong)] hover:bg-white/80"
           onClick={onNewConversation}
         >
           <Plus className="h-4 w-4" />
-          New Journal
+          New chat
         </Button>
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--page-muted)]" />
+        <div className="flex items-center gap-3 px-2">
+          <Search className="h-4 w-4 text-[color:var(--page-muted)]" />
           <Input
             value={searchTerm}
             onChange={(event) => onSearchTermChange(event.target.value)}
             placeholder="Search chats"
             aria-label="Search chats"
-            className="h-9 rounded-full border-[color:var(--page-border)] bg-white/80 pl-9 text-sm placeholder:text-[color:var(--page-muted)]"
+            className="h-10 flex-1 rounded-none border-transparent bg-transparent p-0 text-base placeholder:text-[color:var(--page-muted)] shadow-none focus-visible:ring-0"
           />
         </div>
         <Button
           type="button"
           variant="ghost"
-          className="h-10 w-full justify-start gap-2 rounded-full px-3 text-sm text-[color:var(--page-ink)] hover:bg-white/80 hover:text-[color:var(--page-ink-strong)]"
+          className="h-10 w-full justify-start gap-3 rounded-none px-2 text-base text-[color:var(--page-ink)] hover:bg-white/80 hover:text-[color:var(--page-ink-strong)]"
           onClick={() => setArchivedOpen((prev) => !prev)}
           aria-pressed={archivedOpen}
         >
           <Library className="h-4 w-4" />
           Library
         </Button>
-        <p className="text-xs text-[color:var(--page-muted)]">
-          Journals are saved locally on this device.
-        </p>
       </div>
       <div
-        className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-5 pt-4"
+        className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-5 pt-2"
         data-section="chat-list"
       >
-        <div className="flex items-center justify-between text-xs uppercase tracking-[0.35em] text-[color:var(--page-muted)]">
+        <div className="flex items-center gap-2 text-sm text-[color:var(--page-muted)]">
           <span>Chats</span>
-          <span className="text-[0.65rem] tracking-[0.2em]">
-            {pinned.length + recent.length}
-          </span>
+          <ChevronDown className="h-4 w-4" />
         </div>
         {isLoading ? (
           <p className="text-sm text-[color:var(--page-muted)]">
             Loading conversations...
           </p>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {!hasChats ? (
-              <p className="text-xs text-[color:var(--page-muted)]">
-                No conversations yet.
+              <p className="text-sm text-[color:var(--page-muted)]">
+                No chats yet.
               </p>
             ) : (
               <>
-                {pinned.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-[0.65rem] uppercase tracking-[0.32em] text-[color:var(--page-muted)]">
-                      Pinned
-                    </p>
-                    {renderConversationList(pinned)}
-                  </div>
-                )}
-                <div className="space-y-1">{recent.map(renderConversation)}</div>
+                <div className="space-y-1">
+                  {primaryChats.map(renderConversation)}
+                </div>
               </>
             )}
             {archivedOpen && (
@@ -335,11 +343,11 @@ export const ConversationSidebar = ({
                 className="space-y-2 border-t border-[color:var(--page-border)] pt-3"
                 data-section="library-list"
               >
-                <div className="flex items-center justify-between text-[0.65rem] uppercase tracking-[0.32em] text-[color:var(--page-muted)]">
+                <div className="flex items-center justify-between text-sm text-[color:var(--page-muted)]">
                   <span>Archived</span>
                   <span>{archived.length}</span>
                 </div>
-                {renderConversationList(archived, "No archived conversations.")}
+                {renderConversationList(archived, "No archived chats.")}
               </div>
             )}
           </div>

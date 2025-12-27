@@ -72,12 +72,13 @@ describe("ConversationSidebar", () => {
     expect(html).toContain("rounded-none");
     expect(html).toContain("h-[100dvh]");
     expect(html).toContain('data-section="sidebar-actions"');
-    expect(html).toContain(">New Journal<");
-    expect(html).toContain('placeholder="Search chats"');
+    expect(html).toContain(">New chat<");
+    expect(html).toContain("Search chats");
     expect(html).toContain(">Library<");
+    expect(html).toContain(">Chats<");
   });
 
-  it("shows a preview snippet with a timestamp", () => {
+  it("renders chat titles without previews or timestamps", () => {
     const html = renderToStaticMarkup(
       <ConversationSidebar
         conversations={sampleConversations}
@@ -93,9 +94,8 @@ describe("ConversationSidebar", () => {
       />
     );
 
-    expect(html).toContain('data-role="preview"');
-    expect(html).toContain("Preview...");
-    expect(html).toMatch(/data-role="timestamp"[^>]*>[^<]+<\/span>/);
+    expect(html).not.toContain('data-role="preview"');
+    expect(html).not.toContain('data-role="timestamp"');
   });
 
   it("orders recent chats from newest to oldest", () => {

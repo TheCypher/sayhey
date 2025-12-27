@@ -32,6 +32,28 @@ describe("conversation service", () => {
     expect(transcript?.messages).toEqual([]);
   });
 
+  it("creates a conversation when appending the first message", async () => {
+    const { service } = await buildService();
+
+    const message = {
+      id: "msg-1",
+      role: "user" as const,
+      content: "First entry",
+      createdAt: 1700000000100,
+    };
+
+    const conversationId = await service.appendMessage(null, message);
+
+    const list = await service.listConversations();
+    expect(list).toHaveLength(1);
+    expect(list[0]?.id).toBe(conversationId);
+    expect(list[0]?.messageCount).toBe(1);
+    expect(list[0]?.preview).toBe("First entry");
+
+    const transcript = await service.loadConversation(conversationId);
+    expect(transcript?.messages).toEqual([message]);
+  });
+
   it("appends messages and updates the index", async () => {
     const { service } = await buildService();
 
