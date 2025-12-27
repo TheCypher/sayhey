@@ -72,7 +72,7 @@ describe("ConversationSidebar", () => {
     expect(html).toContain("rounded-none");
     expect(html).toContain("h-[100dvh]");
     expect(html).toContain('data-section="sidebar-actions"');
-    expect(html).toContain(">New chat<");
+    expect(html).toContain(">New Journal<");
     expect(html).toContain('placeholder="Search chats"');
     expect(html).toContain(">Library<");
   });

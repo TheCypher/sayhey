@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 import { ConversationSidebar } from "@/components/application/conversation-sidebar";
@@ -114,6 +115,48 @@ const AUDIO_STATUS_COPY: Record<string, string> = {
 const TEXT_ENTRY_NOTICE = "Use a direct command if you want a reply.";
 
 const COMPOSER_PANEL_ID = "journal-composer-panel";
+const NEW_CHAT_QUERY_KEY = "new";
+
+const WELCOME_TOUR_ITEMS = [
+  {
+    title: "Voice capture",
+    description:
+      "Tap the mic or press Space to start. Pause or resume with Space; double-tap Space to stop and send.",
+  },
+  {
+    title: "Text entry on demand",
+    description:
+      "Use Show text entry for typed notes or direct commands when you prefer the keyboard.",
+  },
+  {
+    title: "Spoken replies",
+    description:
+      "Replies show up only after explicit commands and are spoken aloud by default.",
+  },
+  {
+    title: "Local history rail",
+    description:
+      "Open the left sidebar to browse, pin, rename, or archive your chats.",
+  },
+];
+
+const WELCOME_PHILOSOPHY_ITEMS = [
+  {
+    title: "Local-first privacy",
+    description:
+      "Transcripts stay in your browser and are encrypted at rest.",
+  },
+  {
+    title: "Quiet by default",
+    description:
+      "No responses unless you explicitly ask for one.",
+  },
+  {
+    title: "Predictable control",
+    description:
+      "Clear mic and playback states keep voice work calm and intentional.",
+  },
+];
 
 const isEditableTarget = (target: SpacebarShortcutTarget | null | undefined) => {
   if (!target) {
@@ -419,6 +462,102 @@ export const stripSavedUpdatesForTts = (text: string) => {
 const buildPlaceholderReply = () =>
   "I ran into a problem generating a reply. Please try again in a moment.";
 
+export const getNewChatRequest = (
+  params?: Pick<URLSearchParams, "get"> | null
+) => {
+  if (!params) {
+    return null;
+  }
+  const value = params.get(NEW_CHAT_QUERY_KEY);
+  if (value === null) {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed || "1";
+};
+
+export const buildHomeHrefWithoutNewChat = (
+  params?: Pick<URLSearchParams, "toString"> | null
+) => {
+  const nextParams = new URLSearchParams(params?.toString() ?? "");
+  nextParams.delete(NEW_CHAT_QUERY_KEY);
+  const query = nextParams.toString();
+  return query ? `/?${query}` : "/";
+};
+
+const WelcomePanel = () => (
+  <div
+    data-state="welcome"
+    className="space-y-6 rounded-2xl border border-[color:var(--page-border)] bg-white/80 p-5 shadow-sm shadow-black/5"
+  >
+    <div className="space-y-2">
+      <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--page-muted)]">
+        Welcome
+      </p>
+      <h3 className="font-display text-2xl text-[color:var(--page-ink-strong)]">
+        Welcome to Hey
+      </h3>
+      <p className="text-sm text-[color:var(--page-muted)]">
+        Your voice-first journal. Here is a quick tour and the philosophy
+        behind it.
+      </p>
+    </div>
+    <div className="grid gap-6 md:grid-cols-2">
+      <div className="space-y-3">
+        <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--page-muted)]">
+          Quick tour
+        </p>
+        <ul className="space-y-3 text-sm text-[color:var(--page-ink-strong)]">
+          {WELCOME_TOUR_ITEMS.map((item) => (
+            <li key={item.title} className="flex items-start gap-3">
+              <span
+                className="mt-2 h-1.5 w-1.5 rounded-full bg-[color:var(--page-accent-strong)]"
+                aria-hidden="true"
+              />
+              <div className="space-y-1">
+                <p className="font-semibold">{item.title}</p>
+                <p className="text-xs text-[color:var(--page-muted)]">
+                  {item.description}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="space-y-3">
+        <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--page-muted)]">
+          Our philosophy
+        </p>
+        <ul className="space-y-3 text-sm text-[color:var(--page-ink-strong)]">
+          {WELCOME_PHILOSOPHY_ITEMS.map((item) => (
+            <li key={item.title} className="flex items-start gap-3">
+              <span
+                className="mt-2 h-1.5 w-1.5 rounded-full bg-[color:var(--page-accent)]"
+                aria-hidden="true"
+              />
+              <div className="space-y-1">
+                <p className="font-semibold">{item.title}</p>
+                <p className="text-xs text-[color:var(--page-muted)]">
+                  {item.description}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+    <div className="rounded-2xl border border-[color:var(--page-border)] bg-[color:var(--page-paper)]/80 p-4 text-sm text-[color:var(--page-muted)]">
+      <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--page-muted)]">
+        Try it now
+      </p>
+      <p className="mt-2 text-sm text-[color:var(--page-ink-strong)]">
+        Press Space or tap Talk to start your first entry. Use a direct command
+        if you want a reply.
+      </p>
+    </div>
+  </div>
+);
+
 export function ConversationPane() {
   const {
     conversations,
@@ -446,6 +585,9 @@ export function ConversationPane() {
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const messagesRef = useRef<Message[]>([]);
   const lastSpacebarTapRef = useRef<number | null>(null);
+  const handledNewChatRef = useRef<string | null>(null);
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const filteredConversations = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -457,6 +599,11 @@ export function ConversationPane() {
       return haystack.includes(query);
     });
   }, [conversations, searchTerm]);
+  const shouldShowWelcome = !isHistoryLoading && messages.length === 0;
+  const newChatToken = useMemo(
+    () => getNewChatRequest(searchParams),
+    [searchParams]
+  );
 
   const handleOpenConversation = useCallback(
     async (conversationId: string) => {
@@ -496,6 +643,28 @@ export function ConversationPane() {
     enqueue: enqueueTts,
     clear: clearTts,
   } = useTtsPlayback();
+
+  useEffect(() => {
+    if (!newChatToken) {
+      handledNewChatRef.current = null;
+      return;
+    }
+    if (isHistoryLoading) {
+      return;
+    }
+    if (handledNewChatRef.current === newChatToken) {
+      return;
+    }
+    handledNewChatRef.current = newChatToken;
+    void handleNewConversation();
+    router.replace(buildHomeHrefWithoutNewChat(searchParams));
+  }, [
+    handleNewConversation,
+    isHistoryLoading,
+    newChatToken,
+    router,
+    searchParams,
+  ]);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -1031,9 +1200,13 @@ export function ConversationPane() {
                       Loading your journal history...
                     </div>
                   ) : messages.length === 0 ? (
-                    <div className="text-sm text-[color:var(--page-muted)]">
-                      Say your entry to get started.
-                    </div>
+                    shouldShowWelcome ? (
+                      <WelcomePanel />
+                    ) : (
+                      <div className="text-sm text-[color:var(--page-muted)]">
+                        Say your entry to get started.
+                      </div>
+                    )
                   ) : (
                     messages.map((message) => (
                       <div

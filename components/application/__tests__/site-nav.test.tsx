@@ -20,4 +20,10 @@ describe("SiteNav", () => {
       /href="\/about"[^>]*aria-current="page"|aria-current="page"[^>]*href="\/about"/
     );
   });
+
+  it("links the brand title to home", () => {
+    const html = renderToStaticMarkup(<SiteNav current="home" />);
+
+    expect(html).toMatch(/href="\/\?new=1"[^>]*>Hey<\/a>/);
+  });
 });

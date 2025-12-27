@@ -38,6 +38,7 @@
 - Replies render Markdown blocks with inline emphasis (bold/italic/inline code).
 - The layout uses a device-width viewport so the history, voice controls, and journal panes stack on small screens.
 - On mobile, selecting a past conversation or starting a new chat closes the sidebar to reveal the journal; desktop keeps the sidebar open and persists its open/closed state.
+- When the active journal has no saved entries after history hydration, the journal stream renders a welcome tour even if other journals have entries.
 
 ## API/Integration
 - STT: `/api/stt`

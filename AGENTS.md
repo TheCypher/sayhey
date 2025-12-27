@@ -8,6 +8,11 @@ Purpose: source of truth for feature scope and technical location. Update this f
 - Where: `app/page.tsx`, `components/application/conversation-pane.tsx`, `components/application/conversation-sidebar.tsx`, `hooks/use-voice-capture.ts`, `hooks/use-tts-playback.ts`, `components/ui/button.tsx`, `components/ui/card.tsx`, `components/ui/input.tsx`, `app/globals.css`, `app/layout.tsx`, `docs/features/conversation-pane.md`.
 - Why: Keep voice-first journaling and replies in one predictable workflow aligned to `docs/product-reference.md` and shadcn/ui.
 
+### New Journal Welcome Tour
+- What: When the active journal has no saved entries after history hydration, a welcome panel appears inside the entry stream (even if other journals have entries) to walk users through voice capture, text entry, spoken replies, the history rail, and the privacy-first philosophy; it disappears after the first entry is saved in that journal.
+- Where: `components/application/conversation-pane.tsx`, `components/application/__tests__/conversation-pane.test.tsx`, `docs/features/conversation-pane.md`, `docs/product-reference.md`.
+- Why: Orient users each time they start a new journal and reinforce the local-first, explicit-reply workflow.
+
 ### Local-First Conversation History + Navigation
 - What: Encrypted local conversation persistence with a ChatGPT-style, full-height left sidebar flush to the viewport edge (action rail for new chat/search/library, lightweight chat list for pinned/recent/archived showing preview snippets from the conversation start and timestamps, ordered newest to oldest with deterministic tie-breakers), collapsible with a default-closed state and a loading state until client hydration; on mobile, selecting history or starting a new chat closes the sidebar, while desktop keeps the sidebar open and persists its open/closed state; new conversations default to an "Untitled chat" title until the first entry is saved, then use the first entry snippet unless renamed; plus rename, pin, archive, and delete actions.
 - Where: `components/application/conversation-pane.tsx`, `components/application/conversation-sidebar.tsx`, `hooks/use-local-conversations.ts`, `lib/storage/types.ts`, `lib/storage/indexeddb-store.ts`, `lib/storage/memory-store.ts`, `lib/crypto/keys.ts`, `lib/crypto/encrypt.ts`, `lib/crypto/encoding.ts`, `lib/crypto/web-crypto.ts`, `lib/services/conversations.ts`, `docs/features/local-history.md`, `docs/product-reference.md`.
@@ -49,7 +54,7 @@ Purpose: source of truth for feature scope and technical location. Update this f
 - Why: Make the product principles and local-first trust model explicit to users.
 
 ### Site Navigation
-- What: Primary navigation bar linking Home and About with an active state.
+- What: Primary navigation bar linking Home and About with an active state; the Hey brand link always routes to Home and starts a new chat.
 - Where: `components/application/site-nav.tsx`, `components/application/__tests__/site-nav.test.tsx`, `components/application/conversation-pane.tsx`, `app/about/page.tsx`.
 - Why: Give users a consistent path between the journal and the about narrative.
 

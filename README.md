@@ -30,6 +30,7 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 - [x] Add ElevenLabs TTS proxy and queued playback hook
 - [x] Add chat turn endpoint with Bolt routing and confidence-aware field update gating
 - [x] Ship the voice-first journal pane with explicit request gating and spoken replies
+- [x] Add new-journal welcome tour with feature highlights and philosophy
 - [x] Add privacy-first about page
 - [x] Add primary navigation with Home/About links
 - [ ] Ship local-first conversation history + navigation (encrypted IndexedDB)

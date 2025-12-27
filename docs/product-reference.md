@@ -123,6 +123,15 @@ The system is a three-hop pipeline:
 - Conversation rows show a timestamp and a short preview snippet from the conversation start with ellipsis, ordered newest to oldest.
 - New conversations default to an "Untitled chat" title until the first entry is saved; the first entry snippet becomes the title unless renamed.
 
+### 8.7 First-Run Welcome
+### 8.7 New Journal Welcome
+- When the active journal has no saved entries and hydration completes, the journal stream shows a welcome panel even if other journals have entries.
+- The welcome panel introduces the main controls, feature highlights, and the privacy-first philosophy.
+- The panel disappears as soon as the active journal receives its first entry.
+
+### 8.8 Navigation
+- The Hey brand link always routes to Home and starts a new chat.
+
 ## 9. Tone and Reply Style
 - Helpful, calm, and concise.
 - No replies unless explicitly asked.

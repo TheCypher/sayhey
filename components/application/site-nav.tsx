@@ -14,6 +14,7 @@ const NAV_LINKS: Array<{ key: NavKey; href: string; label: string }> = [
   { key: "home", href: "/", label: "Home" },
   { key: "about", href: "/about", label: "About" },
 ];
+const BRAND_HREF = "/?new=1";
 
 export function SiteNav({
   current,
@@ -26,9 +27,12 @@ export function SiteNav({
       className="flex w-full flex-wrap items-center justify-between gap-4 rounded-3xl border border-[color:var(--page-border)] bg-[color:var(--page-paper)] px-5 py-4 shadow-sm shadow-black/5"
     >
       <div className="flex flex-wrap items-center gap-3">
-        <span className="font-display text-2xl text-[color:var(--page-ink-strong)]">
+        <Link
+          href={BRAND_HREF}
+          className="font-display text-2xl text-[color:var(--page-ink-strong)]"
+        >
           Hey
-        </span>
+        </Link>
         <span className="text-[0.65rem] uppercase tracking-[0.35em] text-[color:var(--page-muted)]">
           {tagline}
         </span>

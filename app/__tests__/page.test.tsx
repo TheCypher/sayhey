@@ -1,8 +1,30 @@
 import { renderToStaticMarkup } from "react-dom/server";
 
+import { useRouter, useSearchParams } from "next/navigation";
+
 import Home from "../page";
 
+jest.mock("next/navigation", () => ({
+  useRouter: jest.fn(),
+  useSearchParams: jest.fn(),
+}));
+
 describe("Home page", () => {
+  const mockUseSearchParams = useSearchParams as jest.MockedFunction<
+    typeof useSearchParams
+  >;
+  const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
+
+  beforeEach(() => {
+    mockUseSearchParams.mockReturnValue(new URLSearchParams());
+    mockUseRouter.mockReturnValue({ replace: jest.fn() });
+  });
+
+  afterEach(() => {
+    mockUseSearchParams.mockReset();
+    mockUseRouter.mockReset();
+  });
+
   it("renders the conversation pane shell", () => {
     const html = renderToStaticMarkup(<Home />);
 

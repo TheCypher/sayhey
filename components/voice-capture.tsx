@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -155,7 +156,9 @@ export function VoiceCapture({ initialAudioStatus }: VoiceCaptureProps) {
       <main className="relative mx-auto flex min-h-[100dvh] w-full max-w-6xl flex-col gap-10 px-6 py-10 md:px-10 md:py-12">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-baseline gap-3">
-            <span className="text-xl font-semibold tracking-tight">Hey</span>
+            <Link href="/?new=1" className="text-xl font-semibold tracking-tight">
+              Hey
+            </Link>
             <span className="text-xs uppercase tracking-[0.35em] text-[color:var(--page-muted)]">
               Voice journal
             </span>
