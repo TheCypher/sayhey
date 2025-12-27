@@ -16,6 +16,8 @@ describe("SiteNav", () => {
   it("marks the active page", () => {
     const html = renderToStaticMarkup(<SiteNav current="about" />);
 
-    expect(html).toMatch(/href="\/about"[^>]*aria-current="page"/);
+    expect(html).toMatch(
+      /href="\/about"[^>]*aria-current="page"|aria-current="page"[^>]*href="\/about"/
+    );
   });
 });

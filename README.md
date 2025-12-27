@@ -32,9 +32,10 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 - [x] Ship the voice-first journal pane with explicit request gating and spoken replies
 - [x] Add privacy-first about page
 - [x] Add primary navigation with Home/About links
-- [ ] Add conversation persistence and confirmation flow for low-confidence field updates
+- [ ] Ship local-first conversation history + navigation (encrypted IndexedDB)
+- [ ] Add confirmation flow for low-confidence field updates
 - [ ] Add streaming TTS/chunking for long replies
-- [ ] Add export and deletion flows
+- [ ] Add export/import and deletion flows
 
 ## Internal Docs
 

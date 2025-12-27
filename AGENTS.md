@@ -4,9 +4,14 @@ Purpose: source of truth for feature scope and technical location. Update this f
 
 ## Feature Catalog
 ### Voice Journal Pane
-- What: Dedicated journal surface that blends push-to-talk voice capture with tap-to-stop transcription, transcript display as single-paragraph entries, and spoken replies with clear mic/playback states; spacebar commands are emphasized in the header and voice controls, voice controls stay in view, entries scroll within a page-sized fixed-height stream in the right pane, responsive breakpoints stack panes on small screens via a device-width viewport, and a text composer is revealed from the journal header with a hide control beside Send that auto-collapses after sending while always saving text entries before optional replies with Markdown emphasis.
-- Where: `app/page.tsx`, `components/application/conversation-pane.tsx`, `hooks/use-voice-capture.ts`, `hooks/use-tts-playback.ts`, `components/ui/button.tsx`, `components/ui/card.tsx`, `app/globals.css`, `app/layout.tsx`, `docs/features/conversation-pane.md`.
+- What: Dedicated journal surface that blends push-to-talk voice capture with tap-to-stop transcription, transcript display as single-paragraph entries, and spoken replies with clear mic/playback states; spacebar commands are emphasized in the header and voice controls, voice controls stay in view, entries scroll within a page-sized fixed-height stream in the right pane, the overall layout locks to the dynamic viewport height so the page only scrolls when content overflows while the shell and sidebar stay pinned to the viewport height, responsive breakpoints stack panes on small screens via a device-width viewport, and a text composer is revealed from the journal header with a hide control beside Send that auto-collapses after sending while always saving text entries before optional replies with Markdown emphasis.
+- Where: `app/page.tsx`, `components/application/conversation-pane.tsx`, `components/application/conversation-sidebar.tsx`, `hooks/use-voice-capture.ts`, `hooks/use-tts-playback.ts`, `components/ui/button.tsx`, `components/ui/card.tsx`, `components/ui/input.tsx`, `app/globals.css`, `app/layout.tsx`, `docs/features/conversation-pane.md`.
 - Why: Keep voice-first journaling and replies in one predictable workflow aligned to `docs/product-reference.md` and shadcn/ui.
+
+### Local-First Conversation History + Navigation
+- What: Encrypted local conversation persistence with a ChatGPT-style, full-height left sidebar flush to the viewport edge (action rail for new chat/search/library, lightweight chat list for pinned/recent/archived showing preview snippets from the conversation start and timestamps, ordered newest to oldest with deterministic tie-breakers), collapsible with a default-closed state and a loading state until client hydration; on mobile, selecting history or starting a new chat closes the sidebar, while desktop keeps the sidebar open and persists its open/closed state; new conversations default to an "Untitled chat" title until the first entry is saved, then use the first entry snippet unless renamed; plus rename, pin, archive, and delete actions.
+- Where: `components/application/conversation-pane.tsx`, `components/application/conversation-sidebar.tsx`, `hooks/use-local-conversations.ts`, `lib/storage/types.ts`, `lib/storage/indexeddb-store.ts`, `lib/storage/memory-store.ts`, `lib/crypto/keys.ts`, `lib/crypto/encrypt.ts`, `lib/crypto/encoding.ts`, `lib/crypto/web-crypto.ts`, `lib/services/conversations.ts`, `docs/features/local-history.md`, `docs/product-reference.md`.
+- Why: Keep transcripts local-only, encrypted at rest, and easy to navigate without server storage.
 
 ### Voice Capture (Client)
 - What: Push-to-talk capture using MediaRecorder with in-memory audio, spacebar start/pause/resume toggling with double-tap stop, tap-to-stop STT submission, and explicit-request gating before agent replies.
@@ -39,7 +44,7 @@ Purpose: source of truth for feature scope and technical location. Update this f
 - Why: Prepare for future persistence without blocking the MVP.
 
 ### About Page
-- What: Privacy-first narrative about who we are, our mission, and why data stays local.
+- What: Privacy-first narrative about who we are, our mission, and why data stays local, presented in a viewport-sized layout that only scrolls when content exceeds the page.
 - Where: `app/about/page.tsx`, `app/about/__tests__/page.test.tsx`.
 - Why: Make the product principles and local-first trust model explicit to users.
 
@@ -47,6 +52,11 @@ Purpose: source of truth for feature scope and technical location. Update this f
 - What: Primary navigation bar linking Home and About with an active state.
 - Where: `components/application/site-nav.tsx`, `components/application/__tests__/site-nav.test.tsx`, `components/application/conversation-pane.tsx`, `app/about/page.tsx`.
 - Why: Give users a consistent path between the journal and the about narrative.
+
+### Styling Compatibility
+- What: PostCSS layer unwrapping with a CJS-compatible plugin so Tailwind utilities render on older mobile browsers without cascade layer support.
+- Where: `postcss.config.mjs`, `lib/postcss/unlayer.js`, `lib/postcss/__tests__/unlayer.test.ts`.
+- Why: Keep styling consistent on iOS browsers that skip `@layer` rules.
 
 ## Catalog Format (What / Where / Why)
 - What: concise capability name and behavior.

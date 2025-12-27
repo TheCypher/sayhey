@@ -23,6 +23,13 @@ describe("ConversationPane", () => {
     expect(html).toContain("overflow-y-auto");
   });
 
+  it("locks the page shell to the dynamic viewport height", () => {
+    const html = renderToStaticMarkup(<ConversationPane />);
+
+    expect(html).toContain("h-[100dvh]");
+    expect(html).toContain("md:overflow-hidden");
+  });
+
   it("moves the text entry toggle into the journal header", () => {
     const html = renderToStaticMarkup(<ConversationPane />);
 
@@ -32,5 +39,13 @@ describe("ConversationPane", () => {
     expect(html).not.toContain(
       "Secondary to voice. Open to add an entry or direct command."
     );
+  });
+
+  it("defaults the sidebar to closed with a toggle control", () => {
+    const html = renderToStaticMarkup(<ConversationPane />);
+
+    expect(html).toContain('data-sidebar-state="closed"');
+    expect(html).toContain('data-control="sidebar-toggle"');
+    expect(html).toMatch(/data-control="sidebar-toggle"[^>]*aria-expanded="false"/);
   });
 });

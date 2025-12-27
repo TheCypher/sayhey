@@ -10,18 +10,20 @@
 - Respond only to explicit, direct commands; text entries still land in the journal.
 
 ## Non-Goals
-- Persisting chat history.
+- Server-side transcript storage.
 - Streaming transcripts in real time.
 - Rich text composer features (attachments, formatting controls).
 
 ## Architecture
 - `components/application/conversation-pane.tsx` hosts the full experience.
+- `components/application/conversation-sidebar.tsx` renders local history navigation.
 - Hooks: `use-voice-capture` for mic capture, `use-tts-playback` for audio.
+- `hooks/use-local-conversations.ts` persists history locally and hydrates the active transcript.
 - Chat turns are sent to `/api/chat/turns` for Bolt routing.
 
 ## Data Model
-- Entries and replies live in local component state only.
-- Conversation history sent to the server is trimmed to the last 6 messages; the pending turn is sent separately.
+- Entries and replies persist locally in IndexedDB; transcripts are encrypted at rest.
+- The conversation history sent to the server is trimmed to the last 6 messages; the pending turn is sent separately.
 
 ## UI/UX Notes
 - Push-to-talk mic button toggles between talk and stop; entries finalize on stop.
@@ -34,7 +36,8 @@
 - Low-confidence transcripts still receive replies; field updates are suppressed server-side.
 - The text composer is collapsed by default and revealed via a header toggle; the hide control sits next to Send and the composer auto-collapses after submit.
 - Replies render Markdown blocks with inline emphasis (bold/italic/inline code).
-- The layout uses a device-width viewport so the two panes stack on small screens.
+- The layout uses a device-width viewport so the history, voice controls, and journal panes stack on small screens.
+- On mobile, selecting a past conversation or starting a new chat closes the sidebar to reveal the journal; desktop keeps the sidebar open and persists its open/closed state.
 
 ## API/Integration
 - STT: `/api/stt`
@@ -49,4 +52,4 @@
 - Long replies delay TTS playback.
 
 ## Decisions
-- 2025-12-25: Keep conversation state client-only for MVP.
+- 2024-xx-xx: Persist transcripts locally in IndexedDB with encrypted payloads; no server-side storage.

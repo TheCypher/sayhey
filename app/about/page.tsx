@@ -17,7 +17,7 @@ const PRIVACY_BULLETS = [
 
 const TRUST_LINES = [
   "Trust should not rely on policies, promises, or fine print. It should be built directly into how the technology works.",
-  "That is why we have made a clear choice: we cannot misuse your data because we do not have it.",
+  "We cannot misuse your data because we do not have it.",
   "This is not about us. This is not about building databases or extracting value from people. This is about empowering individuals.",
 ];
 
@@ -31,7 +31,7 @@ export default function AboutPage() {
   return (
     <main
       data-about="page"
-      className="relative min-h-screen overflow-hidden bg-[color:var(--page-bg)] text-[color:var(--page-ink)]"
+      className="relative min-h-[100dvh] overflow-hidden bg-[color:var(--page-bg)] text-[color:var(--page-ink)]"
     >
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -left-28 top-14 h-72 w-72 rounded-full bg-[radial-gradient(circle_at_top,_rgba(122,162,147,0.38),_transparent_70%)] blur-2xl animate-drift" />
@@ -39,7 +39,7 @@ export default function AboutPage() {
         <div className="absolute bottom-[-7rem] left-1/4 h-80 w-80 rounded-full bg-[radial-gradient(circle,_rgba(210,230,224,0.6),_transparent_70%)] blur-3xl animate-drift" />
       </div>
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-14 px-6 py-12 md:px-10 md:py-20">
+      <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-6xl flex-col gap-14 px-6 py-12 md:px-10 md:py-20">
         <SiteNav current="about" tagline="Private by design" />
 
         <section

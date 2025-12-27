@@ -145,14 +145,14 @@ export function VoiceCapture({ initialAudioStatus }: VoiceCaptureProps) {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[color:var(--page-bg)] text-[color:var(--page-ink)]">
+    <div className="relative min-h-[100dvh] overflow-hidden bg-[color:var(--page-bg)] text-[color:var(--page-ink)]">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -left-20 top-10 h-72 w-72 rounded-full bg-[radial-gradient(circle_at_top,_rgba(122,162,147,0.35),_transparent_70%)] blur-2xl animate-drift" />
         <div className="absolute right-[-6rem] top-1/3 h-96 w-96 rounded-full bg-[radial-gradient(circle_at_30%_30%,_rgba(231,214,182,0.55),_transparent_70%)] blur-3xl animate-drift-slow" />
         <div className="absolute bottom-[-6rem] left-1/3 h-80 w-80 rounded-full bg-[radial-gradient(circle,_rgba(210,230,224,0.6),_transparent_70%)] blur-3xl animate-drift" />
       </div>
 
-      <main className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-10 px-6 py-10 md:px-10 md:py-12">
+      <main className="relative mx-auto flex min-h-[100dvh] w-full max-w-6xl flex-col gap-10 px-6 py-10 md:px-10 md:py-12">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-baseline gap-3">
             <span className="text-xl font-semibold tracking-tight">Hey</span>

@@ -1,5 +1,5 @@
 # Developer Reference: Voice-First Journal
-Version: 2.9
+Version: 3.0
 Status: Design Locked - Voice Journal MVP
 
 ## 1. Purpose of This Document
@@ -56,10 +56,17 @@ Violating these principles is a product bug.
 The system is a three-hop pipeline:
 1) Voice capture (client) -> STT (server) -> chat -> TTS.
 2) All third-party calls happen in server routes.
-3) Conversation history is transient and stored in client state only.
+3) Conversation history is stored locally in the browser only (IndexedDB) and is never persisted server-side.
+
+### 5.1 Local-First History (Tier 1)
+- Conversations are persisted automatically in IndexedDB without prompts.
+- Transcripts are encrypted at rest using AES-GCM; a local master key is generated on first run.
+- A plaintext conversation index (title + preview) is stored for fast navigation and search.
+- Export/import is user-initiated; export can include encrypted backups and optional plaintext.
 
 ## 6. Data Model
-- No chat history persistence yet.
+- Conversation index items (id, title, preview, updatedAt, pinned, archived) are stored in IndexedDB for navigation.
+- Encrypted transcripts are stored separately from the index to keep listing fast.
 - Field updates (when returned by the helper) may be persisted per the workflow.
 - Audio is ephemeral and never stored.
 
@@ -107,6 +114,14 @@ The system is a three-hop pipeline:
 
 ### 8.6 Responsive Layout
 - The app sets a device-width viewport so responsive breakpoints stack panes on smaller screens.
+- Pages are sized to the dynamic viewport height; scrolling appears only when content exceeds the visible page.
+- On desktop, the conversation sidebar is a full-height left rail aligned to the viewport edge with square corners.
+- The sidebar is collapsible and defaults to closed; a header toggle reopens it.
+- On mobile, selecting a past conversation or starting a new chat closes the sidebar to reveal the journal.
+- On desktop, the sidebar stays open after selecting history, and its open/closed state persists across sessions.
+- The sidebar shows a loading state until local conversation history hydrates on the client.
+- Conversation rows show a timestamp and a short preview snippet from the conversation start with ellipsis, ordered newest to oldest.
+- New conversations default to an "Untitled chat" title until the first entry is saved; the first entry snippet becomes the title unless renamed.
 
 ## 9. Tone and Reply Style
 - Helpful, calm, and concise.
@@ -124,6 +139,8 @@ Optional:
 
 ## 11. Out of Scope (MVP)
 - Streaming TTS to the client.
-- Persisted chat transcripts.
+- Passphrase-protected encryption (Tier 2).
+- Encrypted index fields (title/preview).
+- Full-text search across transcripts.
 - Rich text composer features (attachments, formatting controls).
 - Complex NLP-based intent detection.

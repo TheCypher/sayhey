@@ -7,6 +7,7 @@ describe("About page", () => {
     const html = renderToStaticMarkup(<AboutPage />);
 
     expect(html).toContain('data-about="page"');
+    expect(html).toContain("min-h-[100dvh]");
     expect(html).toContain("Who We Are &amp; What We Stand For");
     expect(html).toContain(
       "We are building technology for people, not for platforms."

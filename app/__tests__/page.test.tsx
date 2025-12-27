@@ -14,10 +14,10 @@ describe("Home page", () => {
     expect(html).not.toContain("Agent Conversation");
   });
 
-  it("shows the conversation stream empty state", () => {
+  it("shows the conversation stream loading state", () => {
     const html = renderToStaticMarkup(<Home />);
 
     expect(html).toContain('data-stream="messages"');
-    expect(html).toContain("Say your entry to get started.");
+    expect(html).toContain("Loading your journal history...");
   });
 });
