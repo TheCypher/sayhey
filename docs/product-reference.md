@@ -127,7 +127,7 @@ The system is a three-hop pipeline:
 - On mobile, the journal entries panel stays tall enough to keep the stream readable.
 - On desktop, the sidebar stays open after selecting history, and its open/closed state persists across sessions.
 - The sidebar shows a loading state until local conversation history hydrates on the client.
-- Conversation rows show title-only entries (no preview or timestamp) with a simple action menu; pinned and recent chats share the main list, ordered newest to oldest.
+- Conversation rows show title-only entries with the updated timestamp beneath the title in smaller type; titles truncate to 30 characters, no previews, and a simple action menu; pinned and recent chats share the main list, ordered newest to oldest.
 - Conversations are created when the first entry is saved; the first entry snippet becomes the title unless renamed, falling back to "Untitled chat" if empty.
 - After a new entry is saved, the journal switches to the full-width white canvas view for that conversation.
 - Past journals hide the top navigation bar; the homepage keeps it visible.

@@ -27,7 +27,7 @@
 - Sidebar is a full-height left rail flush to the viewport edge (no rounded container) that mirrors ChatGPT-style navigation (new journal, search, library toggle) with a lightweight chat list.
 - The sidebar is collapsible and defaults to closed on load; a toggle control in the main header reopens it.
 - On mobile, selecting a past conversation or starting a new journal closes the sidebar to reveal the journal; desktop keeps the sidebar open and persists its open/closed state.
-- Chat rows show title-only entries (no preview or timestamp) with a simple action menu; pinned and recent chats share the main list, ordered newest to oldest.
+- Chat rows show title-only entries with the updated timestamp beneath the title in smaller type; titles truncate to 30 characters, no previews, and a simple action menu; pinned and recent chats share the main list, ordered newest to oldest.
 - Conversations are created when the first entry is saved; the first entry snippet becomes the title unless renamed, falling back to "Untitled chat" if empty.
 - Pinned and recent chats stay in the main list; archived chats live under the library toggle.
 - Context actions (rename, pin, archive, delete) appear as compact hover controls.

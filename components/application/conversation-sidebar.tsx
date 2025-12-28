@@ -19,6 +19,29 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { ConversationIndexItem } from "@/lib/storage/types";
 
+const MAX_TITLE_LENGTH = 30;
+const DATE_TIME_FORMATTER = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+const truncateTitle = (value: string) => {
+  const trimmed = value.trim();
+  if (trimmed.length <= MAX_TITLE_LENGTH) {
+    return trimmed;
+  }
+  return `${trimmed.slice(0, MAX_TITLE_LENGTH - 3)}...`;
+};
+
+const formatConversationTimestamp = (timestamp: number) => {
+  if (!Number.isFinite(timestamp)) {
+    return "";
+  }
+  return DATE_TIME_FORMATTER.format(new Date(timestamp));
+};
+
 type ConversationSidebarProps = {
   conversations: ConversationIndexItem[];
   activeConversationId: string | null;
@@ -111,6 +134,8 @@ export const ConversationSidebar = ({
   const renderConversation = (item: ConversationIndexItem) => {
     const isActive = item.id === activeConversationId;
     const title = item.title?.trim() || "Untitled chat";
+    const displayTitle = truncateTitle(title);
+    const timestamp = formatConversationTimestamp(item.updatedAt);
     const isMenuOpen = openMenuId === item.id;
     return (
       <div
@@ -150,13 +175,24 @@ export const ConversationSidebar = ({
           <>
             <button
               type="button"
-              className="flex min-w-0 flex-1 items-center gap-2 text-left"
+              className="flex min-w-0 flex-1 flex-col items-start gap-1 text-left"
               onClick={() => onOpenConversation(item.id)}
               aria-current={isActive ? "page" : undefined}
             >
-              <span className="min-w-0 flex-1 whitespace-normal break-words font-medium">
-                {title}
-              </span>
+              <div className="min-w-0" data-role="title-stack">
+                <span className="block truncate font-medium">
+                  {displayTitle}
+                </span>
+                {timestamp && (
+                  <span
+                    data-role="timestamp"
+                    data-timestamp={item.updatedAt}
+                    className="block whitespace-nowrap text-xs text-[color:var(--page-muted)]"
+                  >
+                    {timestamp}
+                  </span>
+                )}
+              </div>
             </button>
             <div
               className={cn(

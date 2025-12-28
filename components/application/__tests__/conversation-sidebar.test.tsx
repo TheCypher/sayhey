@@ -78,7 +78,7 @@ describe("ConversationSidebar", () => {
     expect(html).toContain(">Journals<");
   });
 
-  it("renders chat titles without previews or timestamps", () => {
+  it("renders chat titles with timestamps beneath and no previews", () => {
     const html = renderToStaticMarkup(
       <ConversationSidebar
         conversations={sampleConversations}
@@ -95,7 +95,46 @@ describe("ConversationSidebar", () => {
     );
 
     expect(html).not.toContain('data-role="preview"');
-    expect(html).not.toContain('data-role="timestamp"');
+    expect(html).toContain('data-role="timestamp"');
+    expect(html).toContain('data-timestamp="2"');
+    expect(html).toContain('data-role="title-stack"');
+    expect(html).toMatch(/data-role="timestamp"[^>]*text-xs/);
+  });
+
+  it("truncates long titles to 30 characters or fewer", () => {
+    const longTitle =
+      "This title should definitely be longer than thirty-three characters";
+    const html = renderToStaticMarkup(
+      <ConversationSidebar
+        conversations={[
+          {
+            id: "conv-long",
+            title: longTitle,
+            preview: "Preview",
+            createdAt: 1,
+            updatedAt: 2,
+            pinned: false,
+            archived: false,
+            messageCount: 1,
+            schemaVersion: 1,
+          },
+        ]}
+        activeConversationId="conv-long"
+        searchTerm=""
+        onSearchTermChange={noop}
+        onNewConversation={noop}
+        onOpenConversation={noop}
+        onRenameConversation={noop}
+        onPinConversation={noop}
+        onArchiveConversation={noop}
+        onDeleteConversation={noop}
+      />
+    );
+
+    const expected = `${longTitle.slice(0, 27)}...`;
+
+    expect(expected.length).toBeLessThanOrEqual(30);
+    expect(html).toContain(expected);
   });
 
   it("orders recent chats from newest to oldest", () => {
