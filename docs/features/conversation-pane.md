@@ -34,6 +34,7 @@
 - Journal entries live in a page-sized stream that stays fixed and scrolls within the pane.
 - Entry and reply headers show the saved date and time.
 - Each entry includes a bottom-right Listen button that stops current audio and speaks the entry.
+- The active sentence is highlighted while audio playback runs.
 - Past journals render as a full-width white canvas with plain text entries (no card styling), while the homepage keeps the split card layout.
 - Past journals use a sticky header for mic controls and the optional text composer above the stream; the homepage keeps the dedicated voice controls card.
 - Stop audio clears the entire queue.
@@ -45,6 +46,7 @@
 - On mobile, the journal entries panel stays tall enough to keep the stream readable.
 - On mobile, selecting a past conversation or starting a new journal closes the sidebar to reveal the journal; desktop keeps the sidebar open and persists its open/closed state.
 - When the active journal has no saved entries after history hydration, the journal stream renders a welcome tour even if other journals have entries.
+- After a new entry is saved, the journal switches to the full-width white canvas view for that conversation.
 
 ## API/Integration
 - STT: `/api/stt`

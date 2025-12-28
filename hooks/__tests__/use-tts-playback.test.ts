@@ -37,12 +37,16 @@ describe("createTtsPlaybackController", () => {
     controller.enqueue("Speak this");
     await tick();
 
-    expect(controller.getSnapshot().status).toBe("playing");
+    const playingSnapshot = controller.getSnapshot();
+    expect(playingSnapshot.status).toBe("playing");
+    expect(playingSnapshot.currentItem?.text).toBe("Speak this");
     expect(audio.play).toHaveBeenCalled();
 
     audio.onended?.();
 
-    expect(controller.getSnapshot().status).toBe("idle");
+    const idleSnapshot = controller.getSnapshot();
+    expect(idleSnapshot.status).toBe("idle");
+    expect(idleSnapshot.currentItem).toBeNull();
     expect(revokeObjectUrl).toHaveBeenCalledWith("blob:audio");
   });
 
@@ -62,6 +66,7 @@ describe("createTtsPlaybackController", () => {
 
     const snapshot = controller.getSnapshot();
     expect(snapshot.status).toBe("stopped");
+    expect(snapshot.currentItem).toBeNull();
     expect(audio.pause).toHaveBeenCalled();
   });
 });

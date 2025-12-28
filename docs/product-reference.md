@@ -102,6 +102,7 @@ The system is a three-hop pipeline:
 - The journal entries pane stays page-sized; the entry stream fills the remaining height and scrolls vertically so entries never resize the pane.
 - Entry and reply headers show the saved date and time.
 - Entry cards include a bottom-right Listen control that plays the entry aloud.
+- While audio plays, the currently spoken sentence is highlighted in the active entry or reply and clears when playback stops or changes.
 - Past journals render as a full-width white canvas with plain text blocks for entries (no card styling), while the homepage keeps the split card layout.
 - Past journals use a sticky header for mic controls and the optional text composer above the stream; the homepage keeps the dedicated voice controls card.
 - Replies render Markdown lists, code blocks, and inline emphasis (bold/italic/inline code).
@@ -128,6 +129,7 @@ The system is a three-hop pipeline:
 - The sidebar shows a loading state until local conversation history hydrates on the client.
 - Conversation rows show title-only entries (no preview or timestamp) with a simple action menu; pinned and recent chats share the main list, ordered newest to oldest.
 - Conversations are created when the first entry is saved; the first entry snippet becomes the title unless renamed, falling back to "Untitled chat" if empty.
+- After a new entry is saved, the journal switches to the full-width white canvas view for that conversation.
 - Past journals hide the top navigation bar; the homepage keeps it visible.
 
 ### 8.7 First-Run Welcome

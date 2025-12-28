@@ -11,8 +11,15 @@ type TtsPlaybackStatus =
 
 type TtsPlaybackSnapshot = {
   status: TtsPlaybackStatus;
-  queue: string[];
+  queue: TtsPlaybackItem[];
+  currentItem: TtsPlaybackItem | null;
   error: string | null;
+};
+
+type TtsPlaybackItem = {
+  id: string;
+  text: string;
+  meta?: Record<string, unknown>;
 };
 
 type AudioLike = {
@@ -33,10 +40,12 @@ type TtsPlaybackControllerOptions = {
 
 type TtsPlaybackController = {
   getSnapshot: () => TtsPlaybackSnapshot;
-  enqueue: (text: string) => void;
+  enqueue: (input: TtsPlaybackInput) => void;
   clear: () => void;
   subscribe: (listener: (snapshot: TtsPlaybackSnapshot) => void) => () => void;
 };
+
+type TtsPlaybackInput = string | TtsPlaybackItem;
 
 const defaultSynthesizeSpeech = async (
   text: string,
@@ -65,11 +74,13 @@ export const createTtsPlaybackController = (
   let snapshot: TtsPlaybackSnapshot = {
     status: "idle",
     queue: [],
+    currentItem: null,
     error: null,
   };
   let currentAudio: AudioLike | null = null;
   let currentUrl: string | null = null;
   let playbackId = 0;
+  let queueCounter = 0;
 
   const listeners = new Set<(snapshot: TtsPlaybackSnapshot) => void>();
 
@@ -77,9 +88,13 @@ export const createTtsPlaybackController = (
     listeners.forEach((listener) => listener({ ...snapshot }));
   };
 
-  const setStatus = (status: TtsPlaybackStatus, error: string | null = null) => {
-    snapshot = { ...snapshot, status, error };
+  const setSnapshot = (next: Partial<TtsPlaybackSnapshot>) => {
+    snapshot = { ...snapshot, ...next };
     emit();
+  };
+
+  const setStatus = (status: TtsPlaybackStatus, error: string | null = null) => {
+    setSnapshot({ status, error });
   };
 
   const cleanupAudio = () => {
@@ -103,13 +118,16 @@ export const createTtsPlaybackController = (
 
   const playNext = async () => {
     if (snapshot.queue.length === 0) {
-      setStatus("idle");
+      setSnapshot({ status: "idle", currentItem: null, error: null });
       return;
     }
 
-    const text = snapshot.queue[0];
-    snapshot = { ...snapshot, queue: snapshot.queue.slice(1) };
-    emit();
+    const [nextItem, ...restQueue] = snapshot.queue;
+    setSnapshot({
+      queue: restQueue,
+      currentItem: nextItem,
+      error: null,
+    });
 
     const runId = playbackId;
 
@@ -118,7 +136,7 @@ export const createTtsPlaybackController = (
       const synthesizeSpeech =
         options.synthesizeSpeech ??
         ((value) => defaultSynthesizeSpeech(value, options.endpoint));
-      const buffer = await synthesizeSpeech(text);
+      const buffer = await synthesizeSpeech(nextItem.text);
 
       if (runId !== playbackId) {
         return;
@@ -145,7 +163,11 @@ export const createTtsPlaybackController = (
       };
       currentAudio.onerror = () => {
         cleanupAudio();
-        setStatus("error", "Audio playback failed.");
+        setSnapshot({
+          status: "error",
+          currentItem: null,
+          error: "Audio playback failed.",
+        });
       };
 
       currentAudio.src = currentUrl;
@@ -153,20 +175,41 @@ export const createTtsPlaybackController = (
       setStatus("playing");
     } catch (error) {
       cleanupAudio();
-      setStatus(
-        "error",
-        error instanceof Error ? error.message : "Audio playback failed."
-      );
+      setSnapshot({
+        status: "error",
+        currentItem: null,
+        error:
+          error instanceof Error ? error.message : "Audio playback failed.",
+      });
     }
   };
 
-  const enqueue = (text: string) => {
-    const trimmed = text.trim();
+  const normalizeItem = (input: TtsPlaybackInput) => {
+    if (typeof input === "string") {
+      const trimmed = input.trim();
+      if (!trimmed) {
+        return null;
+      }
+      queueCounter += 1;
+      return {
+        id: `tts-${Date.now()}-${queueCounter}`,
+        text: trimmed,
+      };
+    }
+    const trimmed = input.text.trim();
     if (!trimmed) {
+      return null;
+    }
+    return { ...input, text: trimmed };
+  };
+
+  const enqueue = (input: TtsPlaybackInput) => {
+    const item = normalizeItem(input);
+    if (!item) {
       return;
     }
 
-    snapshot = { ...snapshot, queue: [...snapshot.queue, trimmed] };
+    snapshot = { ...snapshot, queue: [...snapshot.queue, item] };
     emit();
 
     if (
@@ -180,7 +223,7 @@ export const createTtsPlaybackController = (
 
   const clear = () => {
     playbackId += 1;
-    snapshot = { ...snapshot, queue: [] };
+    snapshot = { ...snapshot, queue: [], currentItem: null, error: null };
     cleanupAudio();
     setStatus("stopped");
   };
@@ -214,10 +257,17 @@ export function useTtsPlayback(options: TtsPlaybackControllerOptions = {}) {
   return {
     status: snapshot.status,
     queue: snapshot.queue,
+    currentItem: snapshot.currentItem,
     error: snapshot.error,
     enqueue: controller.enqueue,
     clear: controller.clear,
   };
 }
 
-export type { TtsPlaybackStatus, TtsPlaybackSnapshot, AudioLike };
+export type {
+  TtsPlaybackStatus,
+  TtsPlaybackSnapshot,
+  TtsPlaybackItem,
+  TtsPlaybackInput,
+  AudioLike,
+};

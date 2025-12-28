@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { useLocalConversations } from "@/hooks/use-local-conversations";
 import { useResponsiveSidebar } from "@/hooks/use-responsive-sidebar";
+import { useTtsPlayback } from "@/hooks/use-tts-playback";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { ConversationSidebar } from "../conversation-sidebar";
@@ -9,6 +10,7 @@ import {
   buildHomeHrefWithoutNewChat,
   ConversationPane,
   getNewChatRequest,
+  shouldSwitchToHistoryView,
 } from "../conversation-pane";
 
 jest.mock("@/hooks/use-local-conversations", () => ({
@@ -17,6 +19,10 @@ jest.mock("@/hooks/use-local-conversations", () => ({
 
 jest.mock("@/hooks/use-responsive-sidebar", () => ({
   useResponsiveSidebar: jest.fn(),
+}));
+
+jest.mock("@/hooks/use-tts-playback", () => ({
+  useTtsPlayback: jest.fn(),
 }));
 
 jest.mock("next/navigation", () => ({
@@ -35,6 +41,9 @@ describe("ConversationPane", () => {
     >;
   const mockUseResponsiveSidebar =
     useResponsiveSidebar as jest.MockedFunction<typeof useResponsiveSidebar>;
+  const mockUseTtsPlayback = useTtsPlayback as jest.MockedFunction<
+    typeof useTtsPlayback
+  >;
   const mockUseSearchParams = useSearchParams as jest.MockedFunction<
     typeof useSearchParams
   >;
@@ -51,7 +60,7 @@ describe("ConversationPane", () => {
       error: null,
       createConversation: jest.fn().mockResolvedValue(undefined),
       openConversation: jest.fn().mockResolvedValue(undefined),
-      appendMessage: jest.fn().mockResolvedValue(undefined),
+      appendMessage: jest.fn().mockResolvedValue("conv-1"),
       renameConversation: jest.fn().mockResolvedValue(undefined),
       pinConversation: jest.fn().mockResolvedValue(undefined),
       archiveConversation: jest.fn().mockResolvedValue(undefined),
@@ -66,6 +75,14 @@ describe("ConversationPane", () => {
       openSidebar: jest.fn(),
       setIsSidebarOpen: jest.fn(),
     });
+    mockUseTtsPlayback.mockReturnValue({
+      status: "idle",
+      queue: [],
+      error: null,
+      currentItem: null,
+      enqueue: jest.fn(),
+      clear: jest.fn(),
+    });
     mockUseSearchParams.mockReturnValue(new URLSearchParams());
     mockUseRouter.mockReturnValue({ replace: jest.fn() });
   });
@@ -73,6 +90,7 @@ describe("ConversationPane", () => {
   afterEach(() => {
     mockUseLocalConversations.mockReset();
     mockUseResponsiveSidebar.mockReset();
+    mockUseTtsPlayback.mockReset();
     mockUseSearchParams.mockReset();
     mockUseRouter.mockReset();
     mockConversationSidebar.mockClear();
@@ -182,7 +200,7 @@ describe("ConversationPane", () => {
       error: null,
       createConversation: jest.fn().mockResolvedValue(undefined),
       openConversation: jest.fn().mockResolvedValue(undefined),
-      appendMessage: jest.fn().mockResolvedValue(undefined),
+      appendMessage: jest.fn().mockResolvedValue("conv-1"),
       renameConversation: jest.fn().mockResolvedValue(undefined),
       pinConversation: jest.fn().mockResolvedValue(undefined),
       archiveConversation: jest.fn().mockResolvedValue(undefined),
@@ -220,7 +238,7 @@ describe("ConversationPane", () => {
       error: null,
       createConversation: jest.fn().mockResolvedValue(undefined),
       openConversation: jest.fn().mockResolvedValue(undefined),
-      appendMessage: jest.fn().mockResolvedValue(undefined),
+      appendMessage: jest.fn().mockResolvedValue("conv-1"),
       renameConversation: jest.fn().mockResolvedValue(undefined),
       pinConversation: jest.fn().mockResolvedValue(undefined),
       archiveConversation: jest.fn().mockResolvedValue(undefined),
@@ -260,7 +278,7 @@ describe("ConversationPane", () => {
       error: null,
       createConversation: jest.fn().mockResolvedValue(undefined),
       openConversation: jest.fn().mockResolvedValue(undefined),
-      appendMessage: jest.fn().mockResolvedValue(undefined),
+      appendMessage: jest.fn().mockResolvedValue("conv-1"),
       renameConversation: jest.fn().mockResolvedValue(undefined),
       pinConversation: jest.fn().mockResolvedValue(undefined),
       archiveConversation: jest.fn().mockResolvedValue(undefined),
@@ -274,6 +292,53 @@ describe("ConversationPane", () => {
     expect(matches).toHaveLength(2);
     expect(html).toContain('data-message-id="msg-3"');
     expect(html).toContain('data-message-id="msg-4"');
+  });
+
+  it("highlights the active sentence while audio plays", () => {
+    mockUseLocalConversations.mockReturnValueOnce({
+      conversations: [],
+      activeConversationId: "conv-3",
+      messages: [
+        {
+          id: "msg-1",
+          role: "assistant",
+          content: "First sentence. Second sentence.",
+          createdAt: 1700000000000,
+        },
+      ],
+      isLoading: false,
+      error: null,
+      createConversation: jest.fn().mockResolvedValue(undefined),
+      openConversation: jest.fn().mockResolvedValue(undefined),
+      appendMessage: jest.fn().mockResolvedValue("conv-1"),
+      renameConversation: jest.fn().mockResolvedValue(undefined),
+      pinConversation: jest.fn().mockResolvedValue(undefined),
+      archiveConversation: jest.fn().mockResolvedValue(undefined),
+      deleteConversation: jest.fn().mockResolvedValue(undefined),
+      refresh: jest.fn().mockResolvedValue(undefined),
+    });
+    mockUseTtsPlayback.mockReturnValueOnce({
+      status: "playing",
+      queue: [],
+      error: null,
+      currentItem: {
+        id: "tts-1",
+        text: "Second sentence.",
+        meta: {
+          messageId: "msg-1",
+          sentenceIndex: 1,
+        },
+      },
+      enqueue: jest.fn(),
+      clear: jest.fn(),
+    });
+
+    const html = renderToStaticMarkup(
+      <ConversationPane initialView="history" />
+    );
+
+    expect(html).toContain('data-sentence-index="1"');
+    expect(html).toContain('data-sentence-state="active"');
   });
 
   it("defaults the sidebar to closed with a toggle control", () => {
@@ -296,7 +361,7 @@ describe("ConversationPane", () => {
       error: null,
       createConversation: jest.fn().mockResolvedValue(undefined),
       openConversation,
-      appendMessage: jest.fn().mockResolvedValue(undefined),
+      appendMessage: jest.fn().mockResolvedValue("conv-1"),
       renameConversation: jest.fn().mockResolvedValue(undefined),
       pinConversation: jest.fn().mockResolvedValue(undefined),
       archiveConversation: jest.fn().mockResolvedValue(undefined),
@@ -364,7 +429,7 @@ describe("ConversationPane", () => {
       error: null,
       createConversation: jest.fn().mockResolvedValue(undefined),
       openConversation: jest.fn().mockResolvedValue(undefined),
-      appendMessage: jest.fn().mockResolvedValue(undefined),
+      appendMessage: jest.fn().mockResolvedValue("conv-1"),
       renameConversation: jest.fn().mockResolvedValue(undefined),
       pinConversation: jest.fn().mockResolvedValue(undefined),
       archiveConversation: jest.fn().mockResolvedValue(undefined),
@@ -389,5 +454,21 @@ describe("ConversationPane", () => {
     expect(
       buildHomeHrefWithoutNewChat(new URLSearchParams("new=1&source=nav"))
     ).toBe("/?source=nav");
+  });
+
+  it("switches to the full journal view after a user entry is saved", () => {
+    expect(shouldSwitchToHistoryView("home", "user", true)).toBe(true);
+  });
+
+  it("keeps the current view when the entry is not saved", () => {
+    expect(shouldSwitchToHistoryView("home", "user", false)).toBe(false);
+  });
+
+  it("keeps the current view for assistant messages", () => {
+    expect(shouldSwitchToHistoryView("home", "assistant", true)).toBe(false);
+  });
+
+  it("does not switch away from the history view", () => {
+    expect(shouldSwitchToHistoryView("history", "user", true)).toBe(false);
   });
 });

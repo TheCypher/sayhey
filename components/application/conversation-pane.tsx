@@ -25,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useLocalConversations } from "@/hooks/use-local-conversations";
 import { useResponsiveSidebar } from "@/hooks/use-responsive-sidebar";
 import { useTtsPlayback } from "@/hooks/use-tts-playback";
+import type { TtsPlaybackItem } from "@/hooks/use-tts-playback";
 import { useVoiceCapture } from "@/hooks/use-voice-capture";
 import { looksLikeExplicitRequest } from "@/lib/explicit-request";
 import type { Message as StoredMessage } from "@/lib/storage/types";
@@ -56,6 +57,18 @@ type MicState = "idle" | "recording" | "processing" | "ready" | "error" | "pause
 type InlineToken = {
   type: "text" | "strong" | "em" | "code";
   content: string;
+};
+
+type SentenceSegment = {
+  index: number;
+  displayText: string;
+  speechText: string;
+  isSpeakable: boolean;
+};
+
+type SentencePlaybackMeta = {
+  messageId: string;
+  sentenceIndex: number;
 };
 
 type SpacebarShortcutTarget = EventTarget | {
@@ -362,6 +375,69 @@ const parseMarkdownBlocks = (text: string) => {
   return blocks;
 };
 
+const SENTENCE_PATTERN = /[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g;
+
+const splitIntoSentences = (text: string) => {
+  if (!text) {
+    return [];
+  }
+  const matches = text.match(SENTENCE_PATTERN);
+  return matches ?? [text];
+};
+
+const isSavedUpdatesBlock = (content: string) =>
+  content.trim().toLowerCase().startsWith("saved updates:");
+
+const buildSentenceSegments = (text: string): SentenceSegment[] => {
+  const blocks = parseMarkdownBlocks(text);
+  const segments: SentenceSegment[] = [];
+  let index = 0;
+
+  const pushSentence = (
+    sentence: string,
+    isSpeakable: boolean
+  ) => {
+    const speechText = sentence.trim();
+    if (!speechText) {
+      return;
+    }
+    segments.push({
+      index,
+      displayText: sentence,
+      speechText,
+      isSpeakable,
+    });
+    index += 1;
+  };
+
+  blocks.forEach((block) => {
+    const blockSpeakable =
+      block.type === "paragraph" && isSavedUpdatesBlock(block.content)
+        ? false
+        : true;
+
+    if (block.type === "code") {
+      pushSentence(block.content, blockSpeakable);
+      return;
+    }
+
+    if (block.type === "list") {
+      block.items.forEach((item) => {
+        splitIntoSentences(item).forEach((sentence) => {
+          pushSentence(sentence, blockSpeakable);
+        });
+      });
+      return;
+    }
+
+    splitIntoSentences(block.content).forEach((sentence) => {
+      pushSentence(sentence, blockSpeakable);
+    });
+  });
+
+  return segments;
+};
+
 const renderInlineMarkdown = (text: string) =>
   parseInlineMarkdown(text).map((token, index) => {
     if (token.type === "strong") {
@@ -394,14 +470,53 @@ const renderInlineMarkdown = (text: string) =>
     return token.content;
   });
 
-export const renderMarkdown = (text: string) => {
+type RenderMarkdownOptions = {
+  activeSentenceIndex?: number | null;
+};
+
+export const renderMarkdown = (
+  text: string,
+  options: RenderMarkdownOptions = {}
+) => {
   const blocks = parseMarkdownBlocks(text);
+  let sentenceIndex = 0;
+
+  const renderSentences = (content: string) =>
+    splitIntoSentences(content).map((sentence) => {
+      const index = sentenceIndex;
+      sentenceIndex += 1;
+      const isActive = options.activeSentenceIndex === index;
+
+      return (
+        <span
+          key={`sentence-${index}`}
+          data-sentence-index={index}
+          data-sentence-state={isActive ? "active" : "idle"}
+          className={cn(
+            "transition-colors duration-150",
+            isActive && "rounded-sm bg-[color:var(--page-accent)]/25"
+          )}
+        >
+          {renderInlineMarkdown(sentence)}
+        </span>
+      );
+    });
+
   return blocks.map((block, index) => {
     if (block.type === "code") {
+      const codeIndex = sentenceIndex;
+      sentenceIndex += 1;
+      const isActive = options.activeSentenceIndex === codeIndex;
+
       return (
         <pre
           key={`code-${index}`}
-          className="overflow-x-auto rounded-xl bg-[color:var(--page-ink-strong)]/90 p-4 text-xs text-white"
+          data-sentence-index={codeIndex}
+          data-sentence-state={isActive ? "active" : "idle"}
+          className={cn(
+            "overflow-x-auto rounded-xl bg-[color:var(--page-ink-strong)]/90 p-4 text-xs text-white transition-shadow duration-150",
+            isActive && "shadow-[0_0_0_2px_rgba(53,90,79,0.35)]"
+          )}
         >
           <code>{block.content}</code>
         </pre>
@@ -412,7 +527,7 @@ export const renderMarkdown = (text: string) => {
         <ul key={`list-${index}`} className="list-disc space-y-1 pl-5">
           {block.items.map((item, itemIndex) => (
             <li key={`item-${index}-${itemIndex}`}>
-              {renderInlineMarkdown(item)}
+              {renderSentences(item)}
             </li>
           ))}
         </ul>
@@ -420,7 +535,7 @@ export const renderMarkdown = (text: string) => {
     }
     return (
       <p key={`paragraph-${index}`} className="leading-relaxed">
-        {renderInlineMarkdown(block.content)}
+        {renderSentences(block.content)}
       </p>
     );
   });
@@ -457,6 +572,23 @@ export const stripSavedUpdatesForTts = (text: string) => {
     "\n\n"
   );
   return cleaned.replace(/\n{3,}/g, "\n\n").trim();
+};
+
+const buildTtsQueueItems = (
+  messageId: string,
+  content: string
+): TtsPlaybackItem[] => {
+  const segments = buildSentenceSegments(content);
+  return segments
+    .filter((segment) => segment.isSpeakable)
+    .map((segment) => ({
+      id: `tts-${messageId}-${segment.index}`,
+      text: segment.speechText,
+      meta: {
+        messageId,
+        sentenceIndex: segment.index,
+      } satisfies SentencePlaybackMeta,
+    }));
 };
 
 const formatMessageTimestamp = (timestamp?: number | null) => {
@@ -500,6 +632,12 @@ export const buildHomeHrefWithoutNewChat = (
   const query = nextParams.toString();
   return query ? `/?${query}` : "/";
 };
+
+export const shouldSwitchToHistoryView = (
+  viewMode: "home" | "history",
+  role: MessageRole,
+  didSave: boolean
+) => viewMode === "home" && role === "user" && didSave;
 
 const WelcomePanel = ({
   variant = "plain",
@@ -628,6 +766,7 @@ export function ConversationPane({
   const messagesRef = useRef<Message[]>([]);
   const lastSpacebarTapRef = useRef<number | null>(null);
   const handledNewChatRef = useRef<string | null>(null);
+  const viewModeRef = useRef(viewMode);
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -683,6 +822,7 @@ export function ConversationPane({
   const {
     status: ttsStatus,
     queue: ttsQueue,
+    currentItem: ttsCurrentItem,
     error: ttsError,
     enqueue: enqueueTts,
     clear: clearTts,
@@ -718,10 +858,26 @@ export function ConversationPane({
     voiceStatusRef.current = voiceStatus;
   }, [voiceStatus]);
 
+  useEffect(() => {
+    viewModeRef.current = viewMode;
+  }, [viewMode]);
+
   const pushMessage = useCallback(
     (message: Message) => {
       messagesRef.current = [...messagesRef.current, message];
-      void appendMessage(message);
+      const savePromise = appendMessage(message);
+      void savePromise.then((conversationId) => {
+        if (
+          shouldSwitchToHistoryView(
+            viewModeRef.current,
+            message.role,
+            Boolean(conversationId)
+          )
+        ) {
+          setViewMode("history");
+        }
+      });
+      return savePromise;
     },
     [appendMessage]
   );
@@ -808,6 +964,14 @@ export function ConversationPane({
     stopRecording,
   ]);
 
+  const enqueueMessagePlayback = useCallback(
+    (messageId: string, content: string) => {
+      const items = buildTtsQueueItems(messageId, content);
+      items.forEach((item) => enqueueTts(item));
+    },
+    [enqueueTts]
+  );
+
   const sendMessage = useCallback(
     async ({
       text,
@@ -869,14 +1033,15 @@ export function ConversationPane({
             ? data.assistantMessage
             : buildPlaceholderReply();
 
+        const assistantId = createId();
         pushMessage({
-          id: createId(),
+          id: assistantId,
           role: "assistant",
           content: assistantMessage,
           createdAt: Date.now(),
         });
 
-        enqueueTts(stripSavedUpdatesForTts(assistantMessage));
+        enqueueMessagePlayback(assistantId, assistantMessage);
       } catch (error) {
         setSendError(
           error instanceof Error
@@ -885,16 +1050,17 @@ export function ConversationPane({
         );
 
         const fallback = buildPlaceholderReply();
+        const fallbackId = createId();
         pushMessage({
-          id: createId(),
+          id: fallbackId,
           role: "assistant",
           content: fallback,
           createdAt: Date.now(),
         });
-        enqueueTts(stripSavedUpdatesForTts(fallback));
+        enqueueMessagePlayback(fallbackId, fallback);
       }
     },
-    [clearTts, enqueueTts, pushMessage]
+    [clearTts, enqueueMessagePlayback, pushMessage]
   );
 
   useEffect(() => {
@@ -996,22 +1162,55 @@ export function ConversationPane({
   };
 
   const handleEntryPlayback = useCallback(
-    (content: string) => {
+    (messageId: string, content: string) => {
       clearTts();
-      enqueueTts(stripSavedUpdatesForTts(content));
+      enqueueMessagePlayback(messageId, content);
     },
-    [clearTts, enqueueTts]
+    [clearTts, enqueueMessagePlayback]
   );
 
-  const audioQueueLabel = useMemo(() => {
+  const queuedMessageCount = useMemo(() => {
     if (ttsQueue.length === 0) {
+      return 0;
+    }
+    const ids = new Set<string>();
+    ttsQueue.forEach((item) => {
+      const meta = item.meta as SentencePlaybackMeta | undefined;
+      if (meta?.messageId) {
+        ids.add(meta.messageId);
+      }
+    });
+    return ids.size || ttsQueue.length;
+  }, [ttsQueue]);
+
+  const audioQueueLabel = useMemo(() => {
+    if (queuedMessageCount === 0) {
       return "No queued audio";
     }
-    if (ttsQueue.length === 1) {
+    if (queuedMessageCount === 1) {
       return "1 reply queued";
     }
-    return `${ttsQueue.length} replies queued`;
-  }, [ttsQueue.length]);
+    return `${queuedMessageCount} replies queued`;
+  }, [queuedMessageCount]);
+  const activeSentence = useMemo(() => {
+    if (ttsStatus !== "playing") {
+      return null;
+    }
+    const meta = ttsCurrentItem?.meta as SentencePlaybackMeta | undefined;
+    if (!meta) {
+      return null;
+    }
+    if (
+      typeof meta.messageId !== "string" ||
+      typeof meta.sentenceIndex !== "number"
+    ) {
+      return null;
+    }
+    return {
+      messageId: meta.messageId,
+      sentenceIndex: meta.sentenceIndex,
+    };
+  }, [ttsCurrentItem, ttsStatus]);
   const sidebarState = isSidebarOpen ? "open" : "closed";
   const sidebarToggleLabel = isSidebarOpen ? "Close sidebar" : "Open sidebar";
   const isHistoryView = viewMode === "history";
@@ -1288,6 +1487,10 @@ export function ConversationPane({
                         const timestamp = formatMessageTimestamp(
                           message.createdAt
                         );
+                        const activeSentenceIndex =
+                          activeSentence?.messageId === message.id
+                            ? activeSentence.sentenceIndex
+                            : null;
 
                         return (
                           <div key={message.id} className="space-y-3">
@@ -1306,7 +1509,9 @@ export function ConversationPane({
                               )}
                             </div>
                             <div className="space-y-3 text-base leading-7 text-[color:var(--page-ink-strong)]">
-                              {renderMarkdown(message.content)}
+                              {renderMarkdown(message.content, {
+                                activeSentenceIndex,
+                              })}
                             </div>
                             <div className="flex items-center justify-end">
                               <Button
@@ -1317,7 +1522,7 @@ export function ConversationPane({
                                 data-message-id={message.id}
                                 className="h-7 px-2 text-[11px] text-[color:var(--page-muted)] hover:text-[color:var(--page-ink-strong)]"
                                 onClick={() =>
-                                  handleEntryPlayback(message.content)
+                                  handleEntryPlayback(message.id, message.content)
                                 }
                               >
                                 Listen
@@ -1547,6 +1752,10 @@ export function ConversationPane({
                             const timestamp = formatMessageTimestamp(
                               message.createdAt
                             );
+                            const activeSentenceIndex =
+                              activeSentence?.messageId === message.id
+                                ? activeSentence.sentenceIndex
+                                : null;
 
                             return (
                               <div
@@ -1573,7 +1782,9 @@ export function ConversationPane({
                                   )}
                                 </div>
                                 <div className="space-y-3 text-sm text-[color:var(--page-ink-strong)]">
-                                  {renderMarkdown(message.content)}
+                                  {renderMarkdown(message.content, {
+                                    activeSentenceIndex,
+                                  })}
                                 </div>
                                 <div className="flex items-center justify-end">
                                   <Button
@@ -1584,7 +1795,7 @@ export function ConversationPane({
                                     data-message-id={message.id}
                                     className="h-7 px-2 text-[11px] text-[color:var(--page-muted)] hover:text-[color:var(--page-ink-strong)]"
                                     onClick={() =>
-                                      handleEntryPlayback(message.content)
+                                      handleEntryPlayback(message.id, message.content)
                                     }
                                   >
                                     Listen

@@ -18,7 +18,7 @@ export type LocalConversationState = {
   error: string | null;
   createConversation: () => Promise<void>;
   openConversation: (conversationId: string) => Promise<void>;
-  appendMessage: (message: Message) => Promise<void>;
+  appendMessage: (message: Message) => Promise<string | null>;
   renameConversation: (conversationId: string, title: string) => Promise<void>;
   pinConversation: (conversationId: string, pinned: boolean) => Promise<void>;
   archiveConversation: (conversationId: string, archived: boolean) => Promise<void>;
@@ -188,7 +188,7 @@ export const useLocalConversations = (): LocalConversationState => {
   const appendMessage = useCallback(
     async (message: Message) => {
       if (!service) {
-        return;
+        return null;
       }
       setMessages((prev) => [...prev, message]);
       const queuedConversationId =
@@ -207,6 +207,7 @@ export const useLocalConversations = (): LocalConversationState => {
           setActiveConversationId(nextId);
         }
         await refresh();
+        return nextId;
       } catch (caught) {
         if (pendingConversationIdRef.current === queuedConversationId) {
           pendingConversationIdRef.current = null;
@@ -214,6 +215,7 @@ export const useLocalConversations = (): LocalConversationState => {
         setError(
           caught instanceof Error ? caught.message : "Unable to save message."
         );
+        return null;
       }
     },
     [activeConversationId, refresh, service]
