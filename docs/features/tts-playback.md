@@ -22,7 +22,9 @@
 ## UI/UX Notes
 - Playback states: `idle`, `loading`, `playing`, `stopped`, `error`.
 - Stop control clears the entire queue.
-- The active sentence in the entry/reply is highlighted while audio is playing.
+- The active sentence in the entry/reply stays highlighted while audio is playing or loading the next sentence.
+- Sentence splitting prefers `Intl.Segmenter` and falls back to a regex that respects closing quotes and brackets.
+- Playback end detection includes a polling fallback to keep the queue advancing if an ended event is missed.
 
 ## API/Integration
 - POST `/api/tts` with `{ text }` JSON body.

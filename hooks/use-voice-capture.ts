@@ -56,7 +56,7 @@ type VoiceCaptureController = {
   subscribe: (listener: (snapshot: VoiceCaptureSnapshot) => void) => () => void;
 };
 
-const defaultTranscribeAudio = async (
+export const transcribeAudioBlob = async (
   blob: Blob,
   endpoint = "/api/stt"
 ): Promise<VoiceCaptureResult> => {
@@ -217,7 +217,7 @@ export const createVoiceCaptureController = (
         try {
           const transcribeAudio =
             options.transcribeAudio ??
-            ((blob) => defaultTranscribeAudio(blob, options.sttEndpoint));
+            ((blob) => transcribeAudioBlob(blob, options.sttEndpoint));
           const result = await transcribeAudio(audioBlob);
 
           snapshot = {

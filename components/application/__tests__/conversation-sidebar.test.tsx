@@ -101,6 +101,26 @@ describe("ConversationSidebar", () => {
     expect(html).toMatch(/data-role="timestamp"[^>]*text-xs/);
   });
 
+  it("links each conversation to its journal route", () => {
+    const html = renderToStaticMarkup(
+      <ConversationSidebar
+        conversations={sampleConversations}
+        activeConversationId="conv-1"
+        searchTerm=""
+        onSearchTermChange={noop}
+        onNewConversation={noop}
+        onOpenConversation={noop}
+        onRenameConversation={noop}
+        onPinConversation={noop}
+        onArchiveConversation={noop}
+        onDeleteConversation={noop}
+      />
+    );
+
+    expect(html).toContain('href="/journals/conv-1"');
+    expect(html).toContain('href="/journals/conv-4"');
+  });
+
   it("truncates long titles to 30 characters or fewer", () => {
     const longTitle =
       "This title should definitely be longer than thirty-three characters";

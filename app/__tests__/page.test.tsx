@@ -1,45 +1,79 @@
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import Home from "../page";
 
 jest.mock("next/navigation", () => ({
   useRouter: jest.fn(),
-  useSearchParams: jest.fn(),
 }));
 
 describe("Home page", () => {
-  const mockUseSearchParams = useSearchParams as jest.MockedFunction<
-    typeof useSearchParams
-  >;
   const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
 
   beforeEach(() => {
-    mockUseSearchParams.mockReturnValue(new URLSearchParams());
-    mockUseRouter.mockReturnValue({ replace: jest.fn() });
+    mockUseRouter.mockReturnValue({ push: jest.fn(), replace: jest.fn() });
   });
 
   afterEach(() => {
-    mockUseSearchParams.mockReset();
     mockUseRouter.mockReset();
   });
 
-  it("renders the conversation pane shell", () => {
+  it("renders the landing hero", () => {
     const html = renderToStaticMarkup(<Home />);
 
-    expect(html).toContain('data-pane="conversation"');
-    expect(html).toContain('data-control="composer-toggle"');
-    expect(html).toContain('data-control="composer"');
-    expect(html).toMatch(/data-control="composer"[^>]*hidden/);
-    expect(html).toContain("Voice journal");
-    expect(html).not.toContain("Agent Conversation");
+    expect(html).toContain('data-page="home"');
+    expect(html).toContain('data-layout="home-split"');
+    expect(html).toContain('data-section="home-hero"');
+    expect(html).toContain("Don&#x27;t type,");
+    expect(html).toContain("just speak.");
+    expect(html).toContain("Start journaling");
+    expect(html).toContain("Space to talk");
+    expect(html).toContain("double-tap to stop");
   });
 
-  it("shows the conversation stream loading state", () => {
+  it("renders the landing navigation", () => {
     const html = renderToStaticMarkup(<Home />);
 
-    expect(html).toContain('data-stream="messages"');
-    expect(html).toContain("Loading your journal history...");
+    expect(html).toContain('data-nav="landing"');
+    expect(html).toContain('data-control="sidebar-toggle"');
+    expect(html).toContain("Say hey");
+    expect(html).toContain("Home");
+    expect(html).toContain("Welcome");
+    expect(html).toContain("About");
+  });
+
+  it("defaults the homepage sidebar to open on desktop", () => {
+    const html = renderToStaticMarkup(<Home />);
+
+    expect(html).toContain('data-sidebar-state="open"');
+    expect(html).toMatch(
+      /data-control="sidebar-toggle"[^>]*aria-expanded="true"/
+    );
+  });
+
+  it("includes the home voice controls", () => {
+    const html = renderToStaticMarkup(<Home />);
+
+    expect(html).toContain('data-control="home-voice-controls"');
+    expect(html).toContain('data-section="home-voice-card"');
+  });
+
+  it("renders the orbiting home accent", () => {
+    const html = renderToStaticMarkup(<Home />);
+
+    expect(html).toContain('data-animation="home-orbit"');
+    expect(html).toContain('data-orbit="hero"');
+    expect(html).toContain('data-orbit-size="2xl"');
+    expect(html).toContain('attributeName="startOffset"');
+  });
+
+  it("seeds the orbit accent with variant, direction, and timing defaults on the server render", () => {
+    const html = renderToStaticMarkup(<Home />);
+
+    expect(html).toContain('data-orbit-variant="swoop-left-high"');
+    expect(html).toContain('data-orbit-direction="ltr"');
+    expect(html).toContain('startOffset="0%"');
+    expect(html).toMatch(/dur="\d+s"/);
   });
 });

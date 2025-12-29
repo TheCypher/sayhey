@@ -3,14 +3,15 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { useLocalConversations } from "@/hooks/use-local-conversations";
 import { useResponsiveSidebar } from "@/hooks/use-responsive-sidebar";
 import { useTtsPlayback } from "@/hooks/use-tts-playback";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import { ConversationSidebar } from "../conversation-sidebar";
 import {
-  buildHomeHrefWithoutNewChat,
+  buildJournalHref,
   ConversationPane,
-  getNewChatRequest,
-  shouldSwitchToHistoryView,
+  renderMarkdown,
+  renderPlainText,
+  shouldAutoSavePendingTranscript,
 } from "../conversation-pane";
 
 jest.mock("@/hooks/use-local-conversations", () => ({
@@ -27,7 +28,6 @@ jest.mock("@/hooks/use-tts-playback", () => ({
 
 jest.mock("next/navigation", () => ({
   useRouter: jest.fn(),
-  useSearchParams: jest.fn(),
 }));
 
 jest.mock("../conversation-sidebar", () => ({
@@ -44,9 +44,6 @@ describe("ConversationPane", () => {
   const mockUseTtsPlayback = useTtsPlayback as jest.MockedFunction<
     typeof useTtsPlayback
   >;
-  const mockUseSearchParams = useSearchParams as jest.MockedFunction<
-    typeof useSearchParams
-  >;
   const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
   const mockConversationSidebar =
     ConversationSidebar as jest.MockedFunction<typeof ConversationSidebar>;
@@ -58,7 +55,7 @@ describe("ConversationPane", () => {
       messages: [],
       isLoading: false,
       error: null,
-      createConversation: jest.fn().mockResolvedValue(undefined),
+      createConversation: jest.fn().mockResolvedValue("conv-1"),
       openConversation: jest.fn().mockResolvedValue(undefined),
       appendMessage: jest.fn().mockResolvedValue("conv-1"),
       renameConversation: jest.fn().mockResolvedValue(undefined),
@@ -69,7 +66,7 @@ describe("ConversationPane", () => {
     });
     mockUseResponsiveSidebar.mockReturnValue({
       isDesktop: true,
-      isSidebarOpen: false,
+      isSidebarOpen: true,
       closeSidebar: jest.fn(),
       toggleSidebar: jest.fn(),
       openSidebar: jest.fn(),
@@ -83,15 +80,13 @@ describe("ConversationPane", () => {
       enqueue: jest.fn(),
       clear: jest.fn(),
     });
-    mockUseSearchParams.mockReturnValue(new URLSearchParams());
-    mockUseRouter.mockReturnValue({ replace: jest.fn() });
+    mockUseRouter.mockReturnValue({ replace: jest.fn(), push: jest.fn() });
   });
 
   afterEach(() => {
     mockUseLocalConversations.mockReset();
     mockUseResponsiveSidebar.mockReset();
     mockUseTtsPlayback.mockReset();
-    mockUseSearchParams.mockReset();
     mockUseRouter.mockReset();
     mockConversationSidebar.mockClear();
   });
@@ -105,6 +100,20 @@ describe("ConversationPane", () => {
     expect(html).toMatch(
       /double-tap\s*<strong[^>]*>Space<\/strong>\s*to stop and send\./i
     );
+  });
+
+  it("routes the sidebar new journal action to the homepage", () => {
+    const push = jest.fn();
+    mockUseRouter.mockReturnValue({ replace: jest.fn(), push });
+
+    renderToStaticMarkup(<ConversationPane />);
+
+    const sidebarProps = mockConversationSidebar.mock.calls[0]?.[0];
+    expect(sidebarProps).toBeDefined();
+
+    sidebarProps?.onNewConversation();
+
+    expect(push).toHaveBeenCalledWith("/");
   });
 
   it("renders a full-width white journal canvas for past journals", () => {
@@ -170,16 +179,8 @@ describe("ConversationPane", () => {
     expect(html).not.toContain('data-panel="privacy"');
   });
 
-  it("keeps the top navigation on the homepage", () => {
+  it("omits the top navigation in the journal view", () => {
     const html = renderToStaticMarkup(<ConversationPane />);
-
-    expect(html).toContain('data-nav="primary"');
-  });
-
-  it("removes the top navigation in past journals", () => {
-    const html = renderToStaticMarkup(
-      <ConversationPane initialView="history" />
-    );
 
     expect(html).not.toContain('data-nav="primary"');
   });
@@ -198,7 +199,7 @@ describe("ConversationPane", () => {
       ],
       isLoading: false,
       error: null,
-      createConversation: jest.fn().mockResolvedValue(undefined),
+      createConversation: jest.fn().mockResolvedValue("conv-1"),
       openConversation: jest.fn().mockResolvedValue(undefined),
       appendMessage: jest.fn().mockResolvedValue("conv-1"),
       renameConversation: jest.fn().mockResolvedValue(undefined),
@@ -236,7 +237,7 @@ describe("ConversationPane", () => {
       ],
       isLoading: false,
       error: null,
-      createConversation: jest.fn().mockResolvedValue(undefined),
+      createConversation: jest.fn().mockResolvedValue("conv-1"),
       openConversation: jest.fn().mockResolvedValue(undefined),
       appendMessage: jest.fn().mockResolvedValue("conv-1"),
       renameConversation: jest.fn().mockResolvedValue(undefined),
@@ -276,7 +277,7 @@ describe("ConversationPane", () => {
       ],
       isLoading: false,
       error: null,
-      createConversation: jest.fn().mockResolvedValue(undefined),
+      createConversation: jest.fn().mockResolvedValue("conv-1"),
       openConversation: jest.fn().mockResolvedValue(undefined),
       appendMessage: jest.fn().mockResolvedValue("conv-1"),
       renameConversation: jest.fn().mockResolvedValue(undefined),
@@ -308,7 +309,7 @@ describe("ConversationPane", () => {
       ],
       isLoading: false,
       error: null,
-      createConversation: jest.fn().mockResolvedValue(undefined),
+      createConversation: jest.fn().mockResolvedValue("conv-1"),
       openConversation: jest.fn().mockResolvedValue(undefined),
       appendMessage: jest.fn().mockResolvedValue("conv-1"),
       renameConversation: jest.fn().mockResolvedValue(undefined),
@@ -341,17 +342,84 @@ describe("ConversationPane", () => {
     expect(html).toContain('data-sentence-state="active"');
   });
 
-  it("defaults the sidebar to closed with a toggle control", () => {
+  it("keeps the active sentence highlighted while audio loads", () => {
+    mockUseLocalConversations.mockReturnValueOnce({
+      conversations: [],
+      activeConversationId: "conv-4",
+      messages: [
+        {
+          id: "msg-1",
+          role: "assistant",
+          content: "First sentence. Second sentence.",
+          createdAt: 1700000000000,
+        },
+      ],
+      isLoading: false,
+      error: null,
+      createConversation: jest.fn().mockResolvedValue("conv-1"),
+      openConversation: jest.fn().mockResolvedValue(undefined),
+      appendMessage: jest.fn().mockResolvedValue("conv-1"),
+      renameConversation: jest.fn().mockResolvedValue(undefined),
+      pinConversation: jest.fn().mockResolvedValue(undefined),
+      archiveConversation: jest.fn().mockResolvedValue(undefined),
+      deleteConversation: jest.fn().mockResolvedValue(undefined),
+      refresh: jest.fn().mockResolvedValue(undefined),
+    });
+    mockUseTtsPlayback.mockReturnValueOnce({
+      status: "loading",
+      queue: [],
+      error: null,
+      currentItem: {
+        id: "tts-2",
+        text: "Second sentence.",
+        meta: {
+          messageId: "msg-1",
+          sentenceIndex: 1,
+        },
+      },
+      enqueue: jest.fn(),
+      clear: jest.fn(),
+    });
+
+    const html = renderToStaticMarkup(
+      <ConversationPane initialView="history" />
+    );
+
+    expect(html).toContain('data-sentence-index="1"');
+    expect(html).toContain('data-sentence-state="active"');
+  });
+
+  it("splits sentences that end with quotes for highlighting", () => {
+    const html = renderToStaticMarkup(
+      <div>{renderMarkdown('He said "Hello." She replied.')}</div>
+    );
+
+    const matches = html.match(/data-sentence-index/g) ?? [];
+    expect(matches).toHaveLength(2);
+  });
+
+  it("renders plain text without markdown formatting", () => {
+    const html = renderToStaticMarkup(
+      <div>{renderPlainText("Line one\nLine two **bold**")}</div>
+    );
+
+    expect(html).toContain("Line one");
+    expect(html).toContain("Line two **bold**");
+    expect(html).not.toContain("<strong");
+  });
+
+  it("defaults the sidebar to open on desktop with a toggle control", () => {
     const html = renderToStaticMarkup(<ConversationPane />);
 
-    expect(html).toContain('data-sidebar-state="closed"');
+    expect(html).toContain('data-sidebar-state="open"');
     expect(html).toContain('data-control="sidebar-toggle"');
-    expect(html).toMatch(/data-control="sidebar-toggle"[^>]*aria-expanded="false"/);
+    expect(html).toMatch(/data-control="sidebar-toggle"[^>]*aria-expanded="true"/);
   });
 
   it("closes the sidebar immediately when opening a journal on mobile", async () => {
     const openConversation = jest.fn().mockResolvedValue(undefined);
     const closeSidebar = jest.fn();
+    const push = jest.fn();
 
     mockUseLocalConversations.mockReturnValueOnce({
       conversations: [],
@@ -359,7 +427,7 @@ describe("ConversationPane", () => {
       messages: [],
       isLoading: false,
       error: null,
-      createConversation: jest.fn().mockResolvedValue(undefined),
+      createConversation: jest.fn().mockResolvedValue("conv-1"),
       openConversation,
       appendMessage: jest.fn().mockResolvedValue("conv-1"),
       renameConversation: jest.fn().mockResolvedValue(undefined),
@@ -376,99 +444,45 @@ describe("ConversationPane", () => {
       openSidebar: jest.fn(),
       setIsSidebarOpen: jest.fn(),
     });
+    mockUseRouter.mockReturnValueOnce({ replace: jest.fn(), push });
 
     renderToStaticMarkup(<ConversationPane />);
 
     const sidebarProps = mockConversationSidebar.mock.calls[0]?.[0];
-    const openPromise = sidebarProps.onOpenConversation("conv-1");
+    sidebarProps.onOpenConversation("conv-1");
 
     expect(closeSidebar).toHaveBeenCalledTimes(1);
     expect(openConversation).toHaveBeenCalledWith("conv-1");
-
-    await openPromise;
+    expect(push).toHaveBeenCalledWith("/journals/conv-1");
   });
 
-  it("welcomes first-time users with a quick tour and philosophy", () => {
+  it("nudges empty journals toward the welcome guide", () => {
     const html = renderToStaticMarkup(<ConversationPane />);
 
-    expect(html).toContain('data-state="welcome"');
-    expect(html).toContain("Welcome to Hey");
-    expect(html).toContain("Quick tour");
-    expect(html).toContain("Our philosophy");
+    expect(html).toContain("Say your entry to get started.");
+    expect(html).toContain('href="/welcome"');
   });
 
-  it("shows the welcome tour for a new journal even if other chats exist", () => {
-    mockUseLocalConversations.mockReturnValueOnce({
-      conversations: [
-        {
-          id: "conv-new",
-          title: "Untitled chat",
-          preview: "",
-          createdAt: 1,
-          updatedAt: 1,
-          pinned: false,
-          archived: false,
-          messageCount: 0,
-          schemaVersion: 1,
-        },
-        {
-          id: "conv-old",
-          title: "Earlier",
-          preview: "Started already",
-          createdAt: 1,
-          updatedAt: 2,
-          pinned: false,
-          archived: false,
-          messageCount: 3,
-          schemaVersion: 1,
-        },
-      ],
-      activeConversationId: "conv-new",
-      messages: [],
-      isLoading: false,
-      error: null,
-      createConversation: jest.fn().mockResolvedValue(undefined),
-      openConversation: jest.fn().mockResolvedValue(undefined),
-      appendMessage: jest.fn().mockResolvedValue("conv-1"),
-      renameConversation: jest.fn().mockResolvedValue(undefined),
-      pinConversation: jest.fn().mockResolvedValue(undefined),
-      archiveConversation: jest.fn().mockResolvedValue(undefined),
-      deleteConversation: jest.fn().mockResolvedValue(undefined),
-      refresh: jest.fn().mockResolvedValue(undefined),
-    });
-
-    const html = renderToStaticMarkup(<ConversationPane />);
-
-    expect(html).toContain('data-state="welcome"');
-    expect(html).toContain("Welcome to Hey");
+  it("builds journal hrefs for conversations", () => {
+    expect(buildJournalHref("conv-1")).toBe("/journals/conv-1");
+    expect(buildJournalHref("conv 2")).toBe("/journals/conv%202");
   });
 
-  it("detects new chat requests in search params", () => {
-    expect(getNewChatRequest(new URLSearchParams("new=1"))).toBe("1");
-    expect(getNewChatRequest(new URLSearchParams("new="))).toBe("1");
-    expect(getNewChatRequest(new URLSearchParams("flag=on"))).toBeNull();
-  });
-
-  it("builds a home href without the new chat param", () => {
-    expect(buildHomeHrefWithoutNewChat(new URLSearchParams("new=1"))).toBe("/");
+  it("auto-saves homepage transcripts when flagged", () => {
     expect(
-      buildHomeHrefWithoutNewChat(new URLSearchParams("new=1&source=nav"))
-    ).toBe("/?source=nav");
+      shouldAutoSavePendingTranscript({
+        transcript: "Saved from home",
+        confidence: null,
+        autoSave: true,
+      })
+    ).toBe(true);
+    expect(
+      shouldAutoSavePendingTranscript({
+        transcript: "Review first",
+        confidence: null,
+      })
+    ).toBe(false);
+    expect(shouldAutoSavePendingTranscript(null)).toBe(false);
   });
 
-  it("switches to the full journal view after a user entry is saved", () => {
-    expect(shouldSwitchToHistoryView("home", "user", true)).toBe(true);
-  });
-
-  it("keeps the current view when the entry is not saved", () => {
-    expect(shouldSwitchToHistoryView("home", "user", false)).toBe(false);
-  });
-
-  it("keeps the current view for assistant messages", () => {
-    expect(shouldSwitchToHistoryView("home", "assistant", true)).toBe(false);
-  });
-
-  it("does not switch away from the history view", () => {
-    expect(shouldSwitchToHistoryView("history", "user", true)).toBe(false);
-  });
 });

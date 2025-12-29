@@ -137,6 +137,19 @@
   body {
     @apply bg-background text-foreground font-sans;
   }
+  .home-theme {
+    --page-bg: #f6efe6;
+    --page-paper: #fff6ea;
+    --page-ink: #1f1711;
+    --page-ink-strong: #130b06;
+    --page-muted: #6e5e51;
+    --page-border: #e9d8c4;
+    --page-card: #fffaf2;
+    --page-accent: #6fb09a;
+    --page-accent-strong: #1d554c;
+    --home-sage: #7fb9a4;
+    --home-ember: #d08b55;
+  }
 }
 
 @keyframes fade-up {

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   Archive,
@@ -26,6 +27,8 @@ const DATE_TIME_FORMATTER = new Intl.DateTimeFormat(undefined, {
   hour: "numeric",
   minute: "2-digit",
 });
+const buildJournalHref = (conversationId: string) =>
+  `/journals/${encodeURIComponent(conversationId)}`;
 
 const truncateTitle = (value: string) => {
   const trimmed = value.trim();
@@ -173,8 +176,8 @@ export const ConversationSidebar = ({
           </div>
         ) : (
           <>
-            <button
-              type="button"
+            <Link
+              href={buildJournalHref(item.id)}
               className="flex min-w-0 flex-1 flex-col items-start gap-1 text-left"
               onClick={() => onOpenConversation(item.id)}
               aria-current={isActive ? "page" : undefined}
@@ -193,7 +196,7 @@ export const ConversationSidebar = ({
                   </span>
                 )}
               </div>
-            </button>
+            </Link>
             <div
               className={cn(
                 "relative flex items-center",
@@ -365,7 +368,7 @@ export const ConversationSidebar = ({
           <div className="space-y-3">
             {!hasChats ? (
               <p className="text-sm text-[color:var(--page-muted)]">
-                No chats yet.
+                No journals yet.
               </p>
             ) : (
               <>

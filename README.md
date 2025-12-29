@@ -13,7 +13,9 @@ Hey is a privacy-first, voice-led journal that stays quiet unless you ask for a 
 - STT via Groq Whisper proxy; TTS via ElevenLabs proxy.
 - Spoken reply playback queue with sentence-level highlighting.
 - Local-first conversation history in IndexedDB with AES-GCM encrypted transcripts.
-- New-journal welcome tour and privacy-first About page.
+- Unique per-journal URLs at `/journals/:id` with a new-journal launcher at `/journals/new`.
+- Minimal marketing homepage with animated listening controls, a hero CTA, a Spacebar shortcut into the journal workspace, and an in-place sidebar toggle for local history.
+- Dedicated welcome tour at `/welcome` plus a privacy-first About page.
 - Chat turn orchestration with confidence gating on low-quality transcripts.
 
 ## Architecture (High Level)
@@ -51,6 +53,7 @@ Copy `.env.example` to `.env.local` and fill in:
 pnpm dev
 ```
 Open [http://localhost:3000](http://localhost:3000).
+Start a new journal at [http://localhost:3000/journals/new](http://localhost:3000/journals/new) and each conversation renders at `/journals/:id`.
 
 ### Optional Realtime Server
 ```bash
@@ -104,7 +107,8 @@ pnpm start
 - [x] Ship the voice-first journal pane with explicit request gating and spoken replies
 - [x] Add new-journal welcome tour with feature highlights and philosophy
 - [x] Add privacy-first about page
-- [x] Add primary navigation with Home/About links
+- [x] Add primary navigation with Home/Journal/About links
+- [x] Ship a minimal marketing homepage with a hero CTA and Spacebar shortcut
 - [x] Ship local-first conversation history + navigation (encrypted IndexedDB)
 - [ ] Add confirmation flow for low-confidence field updates
 - [ ] Add streaming TTS/chunking for long replies

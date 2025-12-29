@@ -28,6 +28,19 @@ type AudioLike = {
   src: string;
   onended: (() => void) | null;
   onerror: (() => void) | null;
+  addEventListener?: (
+    type: "ended" | "error",
+    listener: () => void,
+    options?: boolean | AddEventListenerOptions
+  ) => void;
+  removeEventListener?: (
+    type: "ended" | "error",
+    listener: () => void,
+    options?: boolean | EventListenerOptions
+  ) => void;
+  ended?: boolean;
+  currentTime?: number;
+  duration?: number;
 };
 
 type TtsPlaybackControllerOptions = {
@@ -81,6 +94,7 @@ export const createTtsPlaybackController = (
   let currentUrl: string | null = null;
   let playbackId = 0;
   let queueCounter = 0;
+  let endCheckId: ReturnType<typeof setInterval> | null = null;
 
   const listeners = new Set<(snapshot: TtsPlaybackSnapshot) => void>();
 
@@ -98,6 +112,10 @@ export const createTtsPlaybackController = (
   };
 
   const cleanupAudio = () => {
+    if (endCheckId) {
+      clearInterval(endCheckId);
+      endCheckId = null;
+    }
     if (currentAudio) {
       currentAudio.pause();
       currentAudio.src = "";
@@ -156,12 +174,22 @@ export const createTtsPlaybackController = (
       const blob = new Blob([buffer], { type: "audio/mpeg" });
       currentUrl = createObjectUrl(blob);
       currentAudio = audioFactory();
+      let hasFinished = false;
 
-      currentAudio.onended = () => {
+      const handleEnded = () => {
+        if (hasFinished || runId !== playbackId) {
+          return;
+        }
+        hasFinished = true;
         cleanupAudio();
         playNext();
       };
-      currentAudio.onerror = () => {
+
+      const handleError = () => {
+        if (hasFinished || runId !== playbackId) {
+          return;
+        }
+        hasFinished = true;
         cleanupAudio();
         setSnapshot({
           status: "error",
@@ -170,7 +198,41 @@ export const createTtsPlaybackController = (
         });
       };
 
+      currentAudio.onended = handleEnded;
+      currentAudio.onerror = handleError;
+      if (typeof currentAudio.addEventListener === "function") {
+        currentAudio.addEventListener("ended", handleEnded, { once: true });
+        currentAudio.addEventListener("error", handleError, { once: true });
+      }
+
       currentAudio.src = currentUrl;
+      if (
+        typeof currentAudio.ended === "boolean" ||
+        (typeof currentAudio.duration === "number" &&
+          Number.isFinite(currentAudio.duration))
+      ) {
+        endCheckId = setInterval(() => {
+          if (!currentAudio || runId !== playbackId) {
+            if (endCheckId) {
+              clearInterval(endCheckId);
+              endCheckId = null;
+            }
+            return;
+          }
+          const duration = currentAudio.duration;
+          const currentTime = currentAudio.currentTime;
+          if (
+            currentAudio.ended === true ||
+            (typeof currentTime === "number" &&
+              typeof duration === "number" &&
+              Number.isFinite(duration) &&
+              duration > 0 &&
+              currentTime >= duration - 0.05)
+          ) {
+            handleEnded();
+          }
+        }, 250);
+      }
       await Promise.resolve(currentAudio.play());
       setStatus("playing");
     } catch (error) {
@@ -217,6 +279,7 @@ export const createTtsPlaybackController = (
       snapshot.status === "stopped" ||
       snapshot.status === "error"
     ) {
+      setStatus("loading");
       void playNext();
     }
   };

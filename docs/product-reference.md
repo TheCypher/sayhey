@@ -1,5 +1,5 @@
 # Developer Reference: Voice-First Journal
-Version: 3.0
+Version: 3.1
 Status: Design Locked - Voice Journal MVP
 
 ## 1. Purpose of This Document
@@ -102,9 +102,9 @@ The system is a three-hop pipeline:
 - The journal entries pane stays page-sized; the entry stream fills the remaining height and scrolls vertically so entries never resize the pane.
 - Entry and reply headers show the saved date and time.
 - Entry cards include a bottom-right Listen control that plays the entry aloud.
-- While audio plays, the currently spoken sentence is highlighted in the active entry or reply and clears when playback stops or changes.
-- Past journals render as a full-width white canvas with plain text blocks for entries (no card styling), while the homepage keeps the split card layout.
-- Past journals use a sticky header for mic controls and the optional text composer above the stream; the homepage keeps the dedicated voice controls card.
+- While audio plays or prepares the next sentence, the active sentence stays highlighted in the active entry or reply and advances as playback progresses; it clears when playback stops or errors.
+- Sentence highlighting uses native sentence segmentation when available and preserves sentence boundaries around closing quotes or brackets.
+- Journals render as a full-width white canvas with plain text blocks for entries (no card styling) with a sticky header for mic controls and the optional text composer above the stream.
 - Replies render Markdown lists, code blocks, and inline emphasis (bold/italic/inline code).
 - Spoken audio strips saved-update blocks to stay concise.
 
@@ -122,27 +122,39 @@ The system is a three-hop pipeline:
 - The app sets a device-width viewport so responsive breakpoints stack panes on smaller screens.
 - Pages are sized to the dynamic viewport height; scrolling appears only when content exceeds the visible page.
 - On desktop, the conversation sidebar is a full-height left rail aligned to the viewport edge with square corners.
-- The sidebar is collapsible and defaults to closed; a header toggle reopens it.
-- On mobile, selecting a past conversation or starting a new journal closes the sidebar to reveal the journal.
+- The sidebar is collapsible and defaults to open on desktop while staying closed on mobile; a header toggle reopens it when hidden.
+- On mobile, selecting a past conversation closes the sidebar; tapping New Journal closes it and routes to `/` to start fresh.
 - On mobile, the journal entries panel stays tall enough to keep the stream readable.
 - On desktop, the sidebar stays open after selecting history, and its open/closed state persists across sessions.
 - The sidebar shows a loading state until local conversation history hydrates on the client.
 - Conversation rows show title-only entries with the updated timestamp beneath the title in smaller type; titles truncate to 30 characters, no previews, and a simple action menu; pinned and recent chats share the main list, ordered newest to oldest.
 - Conversations are created when the first entry is saved; the first entry snippet becomes the title unless renamed, falling back to "Untitled chat" if empty.
 - After a new entry is saved, the journal switches to the full-width white canvas view for that conversation.
-- Past journals hide the top navigation bar; the homepage keeps it visible.
+- Journal pages hide the top navigation bar.
 
 ### 8.7 First-Run Welcome
 ### 8.7 New Journal Welcome
-- When the active journal has no saved entries and hydration completes, the journal stream shows a welcome panel even if other journals have entries.
-- The welcome panel introduces the main controls, feature highlights, and the privacy-first philosophy.
-- The panel disappears as soon as the active journal receives its first entry.
+- A dedicated welcome page at `/welcome` introduces the main controls, feature highlights, and the privacy-first philosophy.
+- Empty journals point users to the welcome page instead of rendering the tour inline.
 
 ### 8.8 Navigation
-- The Hey brand link always routes to Home and starts a new journal.
+- The "Say hey" logo uses the page accent green and links back to the homepage.
+- Each journal has a unique `/journals/:id` URL; the marketing homepage remains `/`.
+- The sidebar New Journal action navigates to `/` before starting a new capture.
 
 ### 8.9 Privacy Sentence
 - No standalone privacy sentence appears on the journal surface.
+
+### 8.10 Marketing Home
+- The `/` route is a minimal landing page with a hero, pill navigation, and a CTA to start journaling.
+- The landing navigation only includes Home, Welcome, and About.
+- The landing page is separate from the journal workspace; new journals initiate from `/` and route to `/journals/new` once capture begins.
+- The homepage includes a visible listening control with animated rings that reflect mic state.
+- The homepage shows a full-width streaming orbit text accent anchored to the hero on larger screens, scaled for readability with randomized start/direction/paths and a faster flow.
+- A sidebar toggle shortcut appears in the homepage header and opens/closes the journal history rail in place.
+- Pressing Space on the homepage starts the first voice capture; double-tap Space stops it, and once transcription begins the app routes to `/journals/new`.
+- Homepage transcripts auto-save once transcription completes, creating the conversation and routing to `/journals/:id`.
+- The homepage copy instructs users to press Space to begin and how to stop.
 
 ## 9. Tone and Reply Style
 - Helpful, calm, and concise.

@@ -145,11 +145,12 @@ describe("VoiceCapture", () => {
     expect(html).toContain("Microphone access is needed to listen.");
   });
 
-  it("links the brand title to home", () => {
+  it("links the brand title to a new journal", () => {
     const html = renderToStaticMarkup(
       <VoiceCapture initialAudioStatus="idle" />
     );
 
-    expect(html).toMatch(/href="\/\?new=1"[^>]*>Hey<\/a>/);
+    expect(html).toMatch(/href="\/journals\/new"[^>]*>Say hey<\/a>/);
+    expect(html).toContain("text-[color:var(--page-accent-strong)]");
   });
 });

@@ -16,7 +16,7 @@ export type LocalConversationState = {
   messages: Message[];
   isLoading: boolean;
   error: string | null;
-  createConversation: () => Promise<void>;
+  createConversation: () => Promise<string | null>;
   openConversation: (conversationId: string) => Promise<void>;
   appendMessage: (message: Message) => Promise<string | null>;
   renameConversation: (conversationId: string, title: string) => Promise<void>;
@@ -169,10 +169,28 @@ export const useLocalConversations = (): LocalConversationState => {
   }, [conversations, service]);
 
   const createConversation = useCallback(async () => {
+    if (!service) {
+      return null;
+    }
     pendingConversationIdRef.current = null;
-    setActiveConversationId(null);
-    setMessages(EMPTY_MESSAGES);
-  }, []);
+    try {
+      const item = await service.createConversation();
+      setActiveConversationId(item.id);
+      setMessages(EMPTY_MESSAGES);
+      setConversations((prev) => {
+        const filtered = prev.filter((entry) => entry.id !== item.id);
+        return [item, ...filtered];
+      });
+      return item.id;
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Unable to start a conversation."
+      );
+      return null;
+    }
+  }, [service]);
 
   const openConversation = useCallback(
     async (conversationId: string) => {

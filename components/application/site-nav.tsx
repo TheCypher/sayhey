@@ -3,7 +3,7 @@ import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-type NavKey = "home" | "about";
+type NavKey = "welcome" | "about" | "home";
 
 type SiteNavProps = {
   current?: NavKey;
@@ -12,9 +12,10 @@ type SiteNavProps = {
 
 const NAV_LINKS: Array<{ key: NavKey; href: string; label: string }> = [
   { key: "home", href: "/", label: "Home" },
+  { key: "welcome", href: "/welcome", label: "Welcome" },
   { key: "about", href: "/about", label: "About" },
 ];
-const BRAND_HREF = "/?new=1";
+const BRAND_HREF = "/";
 
 export function SiteNav({
   current,
@@ -29,9 +30,9 @@ export function SiteNav({
       <div className="flex flex-wrap items-center gap-3">
         <Link
           href={BRAND_HREF}
-          className="font-display text-2xl text-[color:var(--page-ink-strong)]"
+          className="font-display text-2xl text-[color:var(--page-accent-strong)]"
         >
-          Hey
+          Say hey
         </Link>
         <span className="text-[0.65rem] uppercase tracking-[0.35em] text-[color:var(--page-muted)]">
           {tagline}

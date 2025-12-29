@@ -1,15 +1,5 @@
-import { Suspense } from "react";
-
-import { ConversationPane } from "@/components/application/conversation-pane";
+import { HomeShell } from "@/components/home/home-shell";
 
 export default function Home() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-[100dvh] bg-[color:var(--page-bg)]" />
-      }
-    >
-      <ConversationPane />
-    </Suspense>
-  );
+  return <HomeShell />;
 }
