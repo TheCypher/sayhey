@@ -76,4 +76,10 @@ describe("Home page", () => {
     expect(html).toContain('startOffset="0%"');
     expect(html).toMatch(/dur="\d+s"/);
   });
+
+  it("keeps the orbit accent visible on mobile", () => {
+    const html = renderToStaticMarkup(<Home />);
+
+    expect(html).toMatch(/data-orbit="hero"[^>]*data-orbit-visible="all"/);
+  });
 });

@@ -308,9 +308,10 @@ export function HomeShell() {
                     aria-hidden="true"
                     data-orbit="hero"
                     data-orbit-size="2xl"
+                    data-orbit-visible="all"
                     data-orbit-direction={orbitConfig.direction}
                     data-orbit-variant={orbitConfig.variant.name}
-                    className="pointer-events-none absolute hidden overflow-visible lg:block"
+                    className="pointer-events-none absolute block overflow-visible"
                     style={{
                       width: orbitConfig.variant.width,
                       height: orbitConfig.variant.height,
@@ -322,7 +323,7 @@ export function HomeShell() {
                           : undefined,
                     }}
                   >
-                    <div className="relative h-full w-full text-[color:var(--page-muted)] opacity-80">
+                    <div className="relative h-full w-full origin-center text-[color:var(--page-muted)] opacity-80 scale-[0.7] sm:scale-[0.82] md:scale-100">
                       <svg
                         data-animation="home-orbit"
                         viewBox="-1200 -1200 5600 4800"
@@ -336,7 +337,7 @@ export function HomeShell() {
                           />
                         </defs>
                         <text
-                          className="font-mono text-[27px] uppercase tracking-[0.1em]"
+                          className="font-mono text-[18px] uppercase tracking-[0.1em] sm:text-[22px] md:text-[27px]"
                           fill="currentColor"
                         >
                           <textPath href="#home-orbit-path" startOffset={orbitConfig.startOffset}>
@@ -361,7 +362,7 @@ export function HomeShell() {
                         className="h-2 w-2 rounded-full bg-[color:var(--home-sage)] shadow-[0_0_12px_rgba(127,185,164,0.6)]"
                         aria-hidden="true"
                       />
-                      Voice-first journal
+                      Voice-first journal & assistant
                     </p>
                     <h1 className="font-display text-4xl leading-tight md:text-7xl">
                       <span className="text-[color:var(--page-muted)]">
@@ -372,7 +373,7 @@ export function HomeShell() {
                       </span>
                     </h1>
                     <p className="mx-auto max-w-xl text-base text-[color:var(--page-muted)] md:text-lg lg:mx-0">
-                      Capture your day in a single breath. Clear transcripts,
+                      Capture your thoughts & ideas easily. Clear transcripts,
                       quiet by default, replies only when you ask.
                     </p>
                   </div>
@@ -395,7 +396,7 @@ export function HomeShell() {
                         Space to talk, double-tap to stop & save
                       </span>
                       <span className="rounded-full border border-[color:var(--page-border)] bg-white/70 px-3 py-1">
-                        Local-only, no account
+                        Local-only, no cloud saving.
                       </span>
                     </div>
                   </div>
