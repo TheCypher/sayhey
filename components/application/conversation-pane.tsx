@@ -1343,6 +1343,7 @@ export function ConversationPane({
                         </Link>
                         <Link
                           href="/auth/logout"
+                          prefetch={false}
                           role="menuitem"
                           onClick={() => setIsAccountMenuOpen(false)}
                           className="flex items-center gap-3 rounded-xl px-3 py-2 text-[color:var(--page-ink)] transition hover:bg-[color:var(--page-border)]/50"

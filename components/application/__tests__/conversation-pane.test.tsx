@@ -14,6 +14,21 @@ import {
   shouldAutoSavePendingTranscript,
 } from "../conversation-pane";
 
+const mockNextLink = jest.fn((props: any) => {
+  const { href, children, prefetch, ...rest } = props;
+
+  return (
+    <a href={href} {...rest}>
+      {children}
+    </a>
+  );
+});
+
+jest.mock("next/link", () => ({
+  __esModule: true,
+  default: (props: any) => mockNextLink(props),
+}));
+
 jest.mock("@/hooks/use-local-conversations", () => ({
   useLocalConversations: jest.fn(),
 }));
@@ -89,6 +104,7 @@ describe("ConversationPane", () => {
     mockUseTtsPlayback.mockReset();
     mockUseRouter.mockReset();
     mockConversationSidebar.mockClear();
+    mockNextLink.mockClear();
   });
 
   it("surfaces the spacebar commands in the header", () => {
@@ -124,6 +140,22 @@ describe("ConversationPane", () => {
     expect(html).toContain("Welcome tour");
     expect(html).toContain("Account");
     expect(html).toContain("Logout");
+  });
+
+  it("disables prefetch on the logout menu link", () => {
+    renderToStaticMarkup(
+      <ConversationPane
+        displayName="Taylor"
+        userEmail="taylor@example.com"
+        initialAccountMenuOpen
+      />
+    );
+
+    const logoutCall = mockNextLink.mock.calls.find(
+      ([props]) => props?.href === "/auth/logout"
+    );
+
+    expect(logoutCall?.[0].prefetch).toBe(false);
   });
 
   it("routes the sidebar new journal action to the homepage", () => {

@@ -8,6 +8,21 @@ import { prisma } from "@/lib/prisma";
 
 import AccountPage from "../page";
 
+const mockNextLink = jest.fn((props: any) => {
+  const { href, children, prefetch, ...rest } = props;
+
+  return (
+    <a href={href} {...rest}>
+      {children}
+    </a>
+  );
+});
+
+jest.mock("next/link", () => ({
+  __esModule: true,
+  default: (props: any) => mockNextLink(props),
+}));
+
 jest.mock("next/headers", () => ({
   cookies: jest.fn(),
 }));
@@ -67,5 +82,15 @@ describe("Account page", () => {
     expect(html).toContain('href="/auth/logout"');
     expect(html).toContain("Logout");
     expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  it("disables prefetch on the logout link", async () => {
+    renderToStaticMarkup(await AccountPage());
+
+    const logoutCall = mockNextLink.mock.calls.find(
+      ([props]) => props?.href === "/auth/logout"
+    );
+
+    expect(logoutCall?.[0].prefetch).toBe(false);
   });
 });

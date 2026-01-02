@@ -71,6 +71,7 @@ export default async function AccountPage() {
                 </Link>
                 <Link
                   href="/auth/logout"
+                  prefetch={false}
                   className={cn(
                     buttonVariants({ variant: "outline" }),
                     "rounded-full border-[color:var(--page-border)] bg-[color:var(--page-paper)] px-5 py-2 text-[color:var(--page-ink-strong)] hover:bg-[color:var(--page-card)] hover:text-[color:var(--page-ink-strong)]"
