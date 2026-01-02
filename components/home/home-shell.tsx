@@ -12,10 +12,19 @@ import { useLocalConversations } from "@/hooks/use-local-conversations";
 import { useResponsiveSidebar } from "@/hooks/use-responsive-sidebar";
 import { cn } from "@/lib/utils";
 
-const NAV_ITEMS = [
+const NAV_ITEMS_PUBLIC = [
   { label: "Home", href: "/" },
+  { label: "Pricing", href: "/pricing" },
   { label: "Welcome", href: "/welcome" },
   { label: "About", href: "/about" },
+  { label: "Login", href: "/auth" },
+];
+const NAV_ITEMS_AUTHENTICATED = [
+  { label: "Home", href: "/" },
+  { label: "Pricing", href: "/pricing" },
+  { label: "Welcome", href: "/welcome" },
+  { label: "About", href: "/about" },
+  { label: "Account", href: "/account" },
 ];
 
 const ORBIT_VARIANTS = [
@@ -95,8 +104,17 @@ type OrbitConfig = {
   duration: string;
 };
 
-export function HomeShell() {
+type HomeShellProps = {
+  isAuthenticated?: boolean;
+  displayName?: string | null;
+};
+
+export function HomeShell({
+  isAuthenticated = false,
+  displayName,
+}: HomeShellProps) {
   const router = useRouter();
+  const greetingName = displayName?.trim();
   const {
     conversations,
     activeConversationId,
@@ -120,6 +138,9 @@ export function HomeShell() {
     duration: "32s",
   }));
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const navItems = isAuthenticated
+    ? NAV_ITEMS_AUTHENTICATED
+    : NAV_ITEMS_PUBLIC;
   useEffect(() => {
     const pickInRange = (min: number, max: number) =>
       Math.random() * (max - min) + min;
@@ -173,7 +194,7 @@ export function HomeShell() {
   };
 
   return (
-    <div className="home-theme relative min-h-[100dvh] overflow-hidden bg-[color:var(--page-bg)] text-[color:var(--page-ink)]">
+    <div className="z-9 home-theme relative min-h-[100dvh] overflow-hidden bg-[color:var(--page-bg)] text-[color:var(--page-ink)]">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(242,182,109,0.28),_transparent_55%)]" />
         <div className="absolute -left-32 top-10 h-80 w-80 rounded-full bg-[radial-gradient(circle_at_30%_30%,_rgba(111,176,154,0.5),_transparent_70%)] blur-3xl animate-drift" />
@@ -243,7 +264,7 @@ export function HomeShell() {
               </div>
 
               <div className="hidden items-center gap-1 lg:flex">
-                {NAV_ITEMS.map((item) => (
+                {navItems.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
@@ -281,7 +302,7 @@ export function HomeShell() {
                   aria-label="Close menu"
                 />
                 <div className="absolute right-4 top-20 w-44 rounded-2xl border border-[color:var(--page-border)] bg-[color:var(--page-paper)] p-2 shadow-lg shadow-black/15">
-                  {NAV_ITEMS.map((item) => (
+                  {navItems.map((item) => (
                     <Link
                       key={item.href}
                       href={item.href}
@@ -357,6 +378,11 @@ export function HomeShell() {
                     </div>
                   </div>
                   <div className="flex flex-col gap-4">
+                    {isAuthenticated && greetingName ? (
+                      <p className="mx-auto text-lg font-medium text-[color:var(--page-ink-strong)] lg:mx-0">
+                        Welcome back, {greetingName}
+                      </p>
+                    ) : null}
                     <p className="mx-auto inline-flex items-center gap-3 rounded-full border border-[color:var(--page-border)] bg-[color:var(--page-paper)]/80 px-4 py-1 text-[11px] uppercase tracking-[0.4em] text-[color:var(--page-muted)] shadow-sm shadow-black/5 lg:mx-0">
                       <span
                         className="h-2 w-2 rounded-full bg-[color:var(--home-sage)] shadow-[0_0_12px_rgba(127,185,164,0.6)]"

@@ -65,6 +65,19 @@ The system is a three-hop pipeline:
 - A plaintext conversation index (title + preview) is stored for fast navigation and search.
 - Export/import is user-initiated; export can include encrypted backups and optional plaintext.
 
+### 5.2 Authentication (Magic Link)
+- Authentication is passwordless and email-only; users request a magic link at `/auth`.
+- Magic links are single-use, short-lived (10-15 minutes), and stored as hashed tokens.
+- Clicking a magic link signs the user in immediately and redirects to `/`.
+- Sign-in sets an HttpOnly session cookie.
+- Invalid, expired, or reused links return a safe redirect to `/auth` with generic error messaging.
+- Auth emails include only the sign-in link (no verification code).
+- New emails with pending onboarding are routed to `/onboarding` after sign-in; returning users stay on `/`.
+- Onboarding captures terms acceptance, usage intent, plan preference, consent to improve, and a display name, then marks onboarding complete.
+- Onboarding steps allow users to move backward to adjust earlier choices before finishing.
+- Onboarding completion routes users to `/`.
+- Email delivery uses Mailtrap in development; auth emails never expose raw secrets.
+
 ## 6. Data Model
 - Conversation index items (id, title, preview, updatedAt, pinned, archived) are stored in IndexedDB for navigation.
 - Encrypted transcripts are stored separately from the index to keep listing fast.
@@ -139,6 +152,9 @@ The system is a three-hop pipeline:
 
 ### 8.8 Navigation
 - The "Say hey" logo uses the page accent green and links back to the homepage.
+- Primary navigation links include Home, Pricing, Welcome, About, and Login when logged out.
+- When a valid session cookie is present, the navigation replaces Login with Account linking to `/account`.
+- The `/account` page shows the signed-in email, lets users edit their display name, provides a logout action, and redirects to `/auth` without a valid session.
 - Each journal has a unique `/journals/:id` URL; the marketing homepage remains `/`.
 - The sidebar New Journal action navigates to `/` before starting a new capture.
 
@@ -147,14 +163,28 @@ The system is a three-hop pipeline:
 
 ### 8.10 Marketing Home
 - The `/` route is a minimal landing page with a hero, pill navigation, and a CTA to start journaling.
-- The landing navigation only includes Home, Welcome, and About.
+- The landing navigation includes Home, Welcome, About, and Login when logged out.
+- Logged-in visitors see Account (linking to `/account`) instead of Login.
+- Logged-in visitors see a personalized greeting using their display name.
 - The landing page is separate from the journal workspace; new journals initiate from `/` and route to `/journals/new` once capture begins.
+- The `/journals/new` workspace does not create a conversation until the first entry is saved.
+- New entries started from `/journals/new` always create a fresh conversation; entries append only when the user is already on that journal's `/journals/:id`.
 - The homepage includes a visible listening control with animated rings that reflect mic state.
 - The homepage shows a full-width streaming orbit text accent anchored to the hero on larger screens, scaled for readability with randomized start/direction/paths and a faster flow.
 - A sidebar toggle shortcut appears in the homepage header and opens/closes the journal history rail in place.
 - Pressing Space on the homepage starts the first voice capture; double-tap Space stops it, and once transcription begins the app routes to `/journals/new`.
 - Homepage transcripts auto-save once transcription completes, creating the conversation and routing to `/journals/:id`.
 - The homepage copy instructs users to press Space to begin and how to stop.
+
+### 8.11 Pricing
+- The `/pricing` route presents the Free plan and its included voice-first features.
+- Pro is labeled "Coming soon" and does not allow purchase or activation.
+- The plan selector is a visual cue only; Individual is the default state and Team/API remain disabled.
+- Free plan calls-to-action route to `/journals/new`.
+
+### 8.12 Signed-in Personalization
+- Signed-in journal views surface a larger greeting button that uses the user's display name.
+- The greeting button opens a compact account menu with links to the welcome tour, account page, and logout action.
 
 ## 9. Tone and Reply Style
 - Helpful, calm, and concise.
@@ -165,6 +195,9 @@ The system is a three-hop pipeline:
 Required:
 - `GROQ_API_KEY` for STT.
 - `ELEVENLABS_API_KEY` for TTS.
+- `MAILTRAP_API_TOKEN` for magic-link emails.
+- `APP_URL` for building magic links.
+- `TOKEN_SECRET` for signing auth tokens and sessions.
 
 Optional:
 - `ELEVENLABS_VOICE_ID` (default: pNInz6obpgDQGcFmaJgB).

@@ -5,7 +5,7 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  directUrl = env("DIRECT_URI")
 }
 
 enum ConversationState {
@@ -14,13 +14,39 @@ enum ConversationState {
   STOPPED
 }
 
+enum OnboardingIntent {
+  PERSONAL
+  TEAM
+}
+
+enum OnboardingStatus {
+  PENDING
+  COMPLETED
+}
+
+enum OnboardingPlan {
+  FREE
+  PRO
+  MAX
+}
+
 model User {
   id                    String        @id @default(cuid())
+  email                 String        @unique
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
+  lastLoginAt           DateTime?
+  displayName           String?
+  onboardingIntent      OnboardingIntent?
+  onboardingPlan        OnboardingPlan?
+  onboardingStatus      OnboardingStatus @default(COMPLETED)
+  consentToImprove      Boolean       @default(false)
+  acceptedTermsAt       DateTime?
+  onboardingCompletedAt DateTime?
   currentConversationId String?       @unique
   currentConversation   Conversation? @relation("CurrentConversation", fields: [currentConversationId], references: [id], onDelete: SetNull)
   conversations         Conversation[] @relation("UserConversations")
+  magicLinks            MagicLink[]
 }
 
 model Conversation {
@@ -49,4 +75,20 @@ model TranscriptSegment {
 
   @@unique([conversationId, sequence])
   @@index([conversationId, createdAt])
+}
+
+model MagicLink {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String
+  codeHash  String?
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  isNewUser Boolean  @default(false)
+
+  @@index([userId, createdAt])
+  @@index([tokenHash])
+  @@index([codeHash])
 }

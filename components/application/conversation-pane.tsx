@@ -10,7 +10,14 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import {
+  HelpCircle,
+  LogOut,
+  MoreHorizontal,
+  PanelLeftClose,
+  PanelLeftOpen,
+  User,
+} from "lucide-react";
 
 import { ConversationSidebar } from "@/components/application/conversation-sidebar";
 import { Button } from "@/components/ui/button";
@@ -594,12 +601,30 @@ export const shouldAutoSavePendingTranscript = (
   pending: PendingTranscript | null
 ) => Boolean(pending?.autoSave);
 
+const getInitials = (value: string) => {
+  const parts = value.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) {
+    return "";
+  }
+  const letters = parts.slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "");
+  return letters.join("");
+};
+
 type ConversationPaneProps = {
   conversationId?: string | null;
   initialView?: "home" | "history";
+  displayName?: string | null;
+  userEmail?: string | null;
+  initialAccountMenuOpen?: boolean;
 };
 
-export function ConversationPane({ conversationId = null }: ConversationPaneProps) {
+export function ConversationPane({
+  conversationId = null,
+  displayName,
+  userEmail,
+  initialAccountMenuOpen = false,
+}: ConversationPaneProps) {
+  const routeConversationId = conversationId ?? null;
   const {
     conversations,
     activeConversationId,
@@ -612,13 +637,16 @@ export function ConversationPane({ conversationId = null }: ConversationPaneProp
     pinConversation,
     archiveConversation,
     deleteConversation,
-  } = useLocalConversations();
+  } = useLocalConversations({ initialConversationId: routeConversationId });
   const [searchTerm, setSearchTerm] = useState("");
   const [sendError, setSendError] = useState<string | null>(null);
   const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [isComposerVisible, setIsComposerVisible] = useState(false);
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(
+    Boolean(initialAccountMenuOpen)
+  );
   const [pendingTranscript, setPendingTranscript] =
     useState<PendingTranscript | null>(null);
   const [isPendingSave, setIsPendingSave] = useState(false);
@@ -627,11 +655,14 @@ export function ConversationPane({ conversationId = null }: ConversationPaneProp
     useResponsiveSidebar({ defaultOpen: true });
   const streamRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
+  const accountMenuRef = useRef<HTMLDivElement | null>(null);
   const messagesRef = useRef<Message[]>([]);
   const lastSpacebarTapRef = useRef<number | null>(null);
   const handledPendingTranscriptRef = useRef(false);
   const router = useRouter();
-  const routeConversationId = conversationId ?? null;
+  const greetingName = displayName?.trim();
+  const greetingEmail = userEmail?.trim();
+  const greetingInitials = greetingName ? getInitials(greetingName) : "";
 
   const filteredConversations = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -741,6 +772,36 @@ export function ConversationPane({ conversationId = null }: ConversationPaneProp
     }
     composerRef.current?.focus();
   }, [isComposerVisible]);
+
+  useEffect(() => {
+    if (!isAccountMenuOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      if (!accountMenuRef.current?.contains(target)) {
+        setIsAccountMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsAccountMenuOpen(false);
+      }
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isAccountMenuOpen]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -1186,26 +1247,114 @@ export function ConversationPane({ conversationId = null }: ConversationPaneProp
         >
           <div className="flex w-full flex-1 min-h-0 flex-col gap-3 md:mx-auto">
             <div className="flex items-center justify-between gap-4">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 text-[color:var(--page-muted)] hover:text-[color:var(--page-ink-strong)]"
-                data-control="sidebar-toggle"
-                aria-controls="conversation-sidebar"
-                aria-expanded={isSidebarOpen}
-                onClick={toggleSidebar}
-              >
-                {isSidebarOpen ? (
-                  <PanelLeftClose className="h-4 w-4" />
-                ) : (
-                  <PanelLeftOpen className="h-4 w-4" />
-                )}
-                <span className="sr-only">{sidebarToggleLabel}</span>
-              </Button>
-              <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--page-muted)]">
-                Journal
-              </p>
+              <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 text-[color:var(--page-muted)] hover:text-[color:var(--page-ink-strong)]"
+                  data-control="sidebar-toggle"
+                  aria-controls="conversation-sidebar"
+                  aria-expanded={isSidebarOpen}
+                  onClick={toggleSidebar}
+                >
+                  {isSidebarOpen ? (
+                    <PanelLeftClose className="h-4 w-4" />
+                  ) : (
+                    <PanelLeftOpen className="h-4 w-4" />
+                  )}
+                  <span className="sr-only">{sidebarToggleLabel}</span>
+                </Button>
+                <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--page-muted)]">
+                  Journal
+                </p>
+              </div>
+              {greetingName && (
+                <div
+                  ref={accountMenuRef}
+                  className="relative"
+                  data-account-state={isAccountMenuOpen ? "open" : "closed"}
+                >
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    data-control="account-menu"
+                    aria-haspopup="menu"
+                    aria-expanded={isAccountMenuOpen}
+                    onClick={() =>
+                      setIsAccountMenuOpen((prev) => !prev)
+                    }
+                    className="h-auto max-w-[280px] justify-start gap-3 rounded-full border-[color:var(--page-border)] bg-white/90 px-3 py-2 text-left shadow-sm shadow-black/5"
+                  >
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--page-accent)] text-sm font-semibold text-white shadow-sm shadow-black/10">
+                      {greetingInitials || "H"}
+                    </span>
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate text-2xl font-semibold leading-tight text-[color:var(--page-muted)]">
+                        {greetingName}
+                      </span>
+                      <span className="text-[11px] text-[color:var(--page-muted)]">
+                        Signed in
+                      </span>
+                    </span>
+                    <MoreHorizontal className="h-4 w-4 text-[color:var(--page-muted)]" />
+                  </Button>
+                  {isAccountMenuOpen && (
+                    <div
+                      role="menu"
+                      data-menu="account"
+                      className="absolute right-0 top-full z-30 mt-2 w-64 overflow-hidden rounded-2xl border border-[color:var(--page-border)] bg-white shadow-xl shadow-black/10"
+                    >
+                      <div className="flex items-center gap-3 px-4 py-3">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--page-accent)] text-sm font-semibold text-white">
+                          {greetingInitials || "H"}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-[color:var(--page-ink-strong)]">
+                            {greetingName}
+                          </p>
+                          {greetingEmail && (
+                            <p className="truncate text-xs text-[color:var(--page-muted)]">
+                              {greetingEmail}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="h-px bg-[color:var(--page-border)]" />
+                      <div className="flex flex-col gap-1 p-2 text-sm">
+                        <Link
+                          href="/welcome"
+                          role="menuitem"
+                          onClick={() => setIsAccountMenuOpen(false)}
+                          className="flex items-center gap-3 rounded-xl px-3 py-2 text-[color:var(--page-ink)] transition hover:bg-[color:var(--page-border)]/50"
+                        >
+                          <HelpCircle className="h-4 w-4 text-[color:var(--page-muted)]" />
+                          Welcome tour
+                        </Link>
+                        <Link
+                          href="/account"
+                          role="menuitem"
+                          onClick={() => setIsAccountMenuOpen(false)}
+                          className="flex items-center gap-3 rounded-xl px-3 py-2 text-[color:var(--page-ink)] transition hover:bg-[color:var(--page-border)]/50"
+                        >
+                          <User className="h-4 w-4 text-[color:var(--page-muted)]" />
+                          Account
+                        </Link>
+                        <Link
+                          href="/auth/logout"
+                          role="menuitem"
+                          onClick={() => setIsAccountMenuOpen(false)}
+                          className="flex items-center gap-3 rounded-xl px-3 py-2 text-[color:var(--page-ink)] transition hover:bg-[color:var(--page-border)]/50"
+                        >
+                          <LogOut className="h-4 w-4 text-[color:var(--page-muted)]" />
+                          Logout
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <section

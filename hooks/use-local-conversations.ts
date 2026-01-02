@@ -26,6 +26,11 @@ export type LocalConversationState = {
   refresh: () => Promise<void>;
 };
 
+export type UseLocalConversationsOptions = {
+  initialConversationId?: string | null;
+  autoSelectLatest?: boolean;
+};
+
 const EMPTY_MESSAGES: Message[] = [];
 
 const createConversationId = () => {
@@ -35,7 +40,10 @@ const createConversationId = () => {
   return `conv-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 };
 
-export const useLocalConversations = (): LocalConversationState => {
+export const useLocalConversations = (
+  options: UseLocalConversationsOptions = {}
+): LocalConversationState => {
+  const { initialConversationId, autoSelectLatest = true } = options;
   const isBrowser = typeof window !== "undefined";
   const store = useMemo(
     () => (isBrowser ? createIndexedDbStore() : null),
@@ -47,7 +55,7 @@ export const useLocalConversations = (): LocalConversationState => {
     []
   );
   const [activeConversationId, setActiveConversationId] = useState<string | null>(
-    null
+    initialConversationId ?? null
   );
   const [messages, setMessages] = useState<Message[]>(EMPTY_MESSAGES);
   const [isLoading, setIsLoading] = useState(true);
@@ -114,13 +122,26 @@ export const useLocalConversations = (): LocalConversationState => {
           return;
         }
         setConversations(list);
-        const nextId = list[0]?.id ?? null;
-        setActiveConversationId(nextId);
-        if (nextId) {
-          await loadTranscript(nextId);
-        } else {
+
+        if (initialConversationId !== undefined) {
+          setActiveConversationId(initialConversationId ?? null);
           setMessages(EMPTY_MESSAGES);
+          return;
         }
+
+        if (autoSelectLatest) {
+          const nextId = list[0]?.id ?? null;
+          setActiveConversationId(nextId);
+          if (nextId) {
+            await loadTranscript(nextId);
+          } else {
+            setMessages(EMPTY_MESSAGES);
+          }
+          return;
+        }
+
+        setActiveConversationId(null);
+        setMessages(EMPTY_MESSAGES);
       } catch (caught) {
         if (!active) {
           return;
@@ -139,7 +160,7 @@ export const useLocalConversations = (): LocalConversationState => {
     return () => {
       active = false;
     };
-  }, [loadTranscript, service]);
+  }, [autoSelectLatest, initialConversationId, loadTranscript, service]);
 
   useEffect(() => {
     if (!service || previewHydratedRef.current || conversations.length === 0) {

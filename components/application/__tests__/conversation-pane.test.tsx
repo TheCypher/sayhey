@@ -102,6 +102,30 @@ describe("ConversationPane", () => {
     );
   });
 
+  it("renders a greeting button for signed-in users", () => {
+    const html = renderToStaticMarkup(
+      <ConversationPane displayName="Taylor" />
+    );
+
+    expect(html).toContain('data-control="account-menu"');
+    expect(html).toContain("Taylor");
+  });
+
+  it("shows the account menu content when opened", () => {
+    const html = renderToStaticMarkup(
+      <ConversationPane
+        displayName="Taylor"
+        userEmail="taylor@example.com"
+        initialAccountMenuOpen
+      />
+    );
+
+    expect(html).toContain('data-menu="account"');
+    expect(html).toContain("Welcome tour");
+    expect(html).toContain("Account");
+    expect(html).toContain("Logout");
+  });
+
   it("routes the sidebar new journal action to the homepage", () => {
     const push = jest.fn();
     mockUseRouter.mockReturnValue({ replace: jest.fn(), push });
@@ -114,6 +138,22 @@ describe("ConversationPane", () => {
     sidebarProps?.onNewConversation();
 
     expect(push).toHaveBeenCalledWith("/");
+  });
+
+  it("starts new journals without preselecting an existing conversation", () => {
+    renderToStaticMarkup(<ConversationPane />);
+
+    expect(mockUseLocalConversations).toHaveBeenCalledWith({
+      initialConversationId: null,
+    });
+  });
+
+  it("initializes the active conversation when a journal id is provided", () => {
+    renderToStaticMarkup(<ConversationPane conversationId="conv-123" />);
+
+    expect(mockUseLocalConversations).toHaveBeenCalledWith({
+      initialConversationId: "conv-123",
+    });
   });
 
   it("renders a full-width white journal canvas for past journals", () => {

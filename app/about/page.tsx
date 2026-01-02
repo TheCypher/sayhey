@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 
 import { SiteNav } from "@/components/application/site-nav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { verifySessionToken } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
   title: "About | Hey",
@@ -27,20 +29,27 @@ const PEOPLE_LINES = [
   "Use it knowing that what you say stays with you.",
 ];
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("sayhey_session")?.value;
+  const session = token ? verifySessionToken(token) : null;
+
   return (
     <main
       data-about="page"
-      className="relative min-h-[100dvh] overflow-hidden bg-[color:var(--page-bg)] text-[color:var(--page-ink)]"
+      data-auth-theme="sunset"
+      className="relative min-h-[100dvh] overflow-hidden bg-[color:var(--page-bg)] text-[color:var(--page-ink)] [--page-bg:#f7efe4] [--page-ink:#2b2218] [--page-ink-strong:#1c140c] [--page-muted:#6f6257] [--page-border:#ead6c1] [--page-card:#fff8f1] [--page-paper:#fffcf7] [--page-accent:#cf8259] [--page-accent-strong:#a85435]"
     >
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-28 top-14 h-72 w-72 rounded-full bg-[radial-gradient(circle_at_top,_rgba(122,162,147,0.38),_transparent_70%)] blur-2xl animate-drift" />
-        <div className="absolute right-[-9rem] top-1/3 h-96 w-96 rounded-full bg-[radial-gradient(circle_at_30%_30%,_rgba(231,214,182,0.55),_transparent_70%)] blur-3xl animate-drift-slow" />
-        <div className="absolute bottom-[-7rem] left-1/4 h-80 w-80 rounded-full bg-[radial-gradient(circle,_rgba(210,230,224,0.6),_transparent_70%)] blur-3xl animate-drift" />
+        <div className="absolute inset-0 bg-[radial-gradient(120%_120%_at_20%_0%,_rgba(255,248,239,0.9),_rgba(244,226,206,0.55)_45%,_rgba(231,205,176,0.35)_70%,_transparent_100%)]" />
+        <div className="absolute -left-24 top-6 h-80 w-80 rounded-full bg-[radial-gradient(circle_at_35%_35%,_rgba(209,117,76,0.5),_transparent_70%)] blur-3xl animate-drift" />
+        <div className="absolute right-[-10rem] top-10 h-[28rem] w-[28rem] rounded-full bg-[radial-gradient(circle_at_30%_30%,_rgba(84,148,140,0.45),_transparent_70%)] blur-3xl animate-drift-slow" />
+        <div className="absolute bottom-[-8rem] left-1/3 h-96 w-96 rounded-full bg-[radial-gradient(circle_at_35%_35%,_rgba(244,206,153,0.55),_transparent_70%)] blur-3xl animate-drift" />
+        <div className="absolute inset-0 opacity-35 [background-image:linear-gradient(90deg,rgba(255,255,255,0.35)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.35)_1px,transparent_1px)] [background-size:36px_36px]" />
       </div>
 
       <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-6xl flex-col gap-14 px-6 py-12 md:px-10 md:py-20">
-        <SiteNav current="about" tagline="Private by design" />
+        <SiteNav current="about" isAuthenticated={Boolean(session)} />
 
         <section
           data-about="hero"

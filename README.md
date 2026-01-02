@@ -14,7 +14,10 @@ Hey is a privacy-first, voice-led journal that stays quiet unless you ask for a 
 - Spoken reply playback queue with sentence-level highlighting.
 - Local-first conversation history in IndexedDB with AES-GCM encrypted transcripts.
 - Unique per-journal URLs at `/journals/:id` with a new-journal launcher at `/journals/new`.
+- Magic-link authentication with Mailtrap email delivery and HttpOnly session cookies.
+- New-user onboarding after magic-link sign-in with terms, intent, plan, consent, and display name capture.
 - Minimal marketing homepage with animated listening controls, a hero CTA, a Spacebar shortcut into the journal workspace, and an in-place sidebar toggle for local history.
+- Pricing page with the Free plan available now and Pro marked as coming soon.
 - Dedicated welcome tour at `/welcome` plus a privacy-first About page.
 - Chat turn orchestration with confidence gating on low-quality transcripts.
 
@@ -47,6 +50,7 @@ Copy `.env.example` to `.env.local` and fill in:
 - `ELEVENLABS_API_KEY` (required for TTS)
 - Optional tuning: `ELEVENLABS_VOICE_ID`, `ELEVENLABS_TTS_MODEL`
 - Optional data/realtime settings: `DATABASE_URL`, `DIRECT_URL`, `REALTIME_PORT`, `NEXT_PUBLIC_TRANSCRIPTION_WS_URL`
+- Auth settings: `MAILTRAP_API_TOKEN`, `APP_URL`, `TOKEN_SECRET`
 
 ### Run the App
 ```bash
@@ -94,6 +98,7 @@ pnpm start
 - Feature deep-dives: `docs/features/README.md`
 - Orchestrator plan: `docs/orchestrator-doc.md`
 - Workflow loop: `docs/workflow-handbook.md`
+- Agent docs workflow: `docs/agent-workflow.md`
 - Testing guide: `docs/testing-playbook-doc.md`
 
 ## Roadmap
@@ -110,6 +115,8 @@ pnpm start
 - [x] Add primary navigation with Home/Journal/About links
 - [x] Ship a minimal marketing homepage with a hero CTA and Spacebar shortcut
 - [x] Ship local-first conversation history + navigation (encrypted IndexedDB)
+- [x] Add magic-link authentication with Mailtrap delivery
+- [x] Add new-user onboarding flow
 - [ ] Add confirmation flow for low-confidence field updates
 - [ ] Add streaming TTS/chunking for long replies
 - [ ] Add export/import and deletion flows
@@ -117,6 +124,7 @@ pnpm start
 ## Contribution Workflow
 - Update `docs/product-reference.md` before changing behavior.
 - Update `AGENTS.md` when shipping or modifying features.
+- Follow `docs/agent-workflow.md` to keep `AGENTS.md` and `CLAUDE.md` synchronized.
 - Use shadcn/ui for UI components and keep accessibility in mind.
 - Anchor new workflows to live data (Prisma/Supabase) before UI polish.
 
