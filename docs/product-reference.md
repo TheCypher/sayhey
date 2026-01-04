@@ -42,7 +42,7 @@ Violating these principles is a product bug.
 - When a reply is requested, it renders as text and is spoken aloud.
 
 ### 4.2 Text Turns
-- The text composer is hidden by default and revealed in the sticky top controls above the journal stream; it auto-collapses after send.
+- The text composer is hidden by default and revealed in the bottom text entry rail below the journal stream; it auto-collapses after send.
 - Submitting text always adds a journal entry to the stream.
 - Replies are only requested when the text includes an explicit, direct command.
 - Voice capture remains the primary workflow.
@@ -117,19 +117,23 @@ The system is a three-hop pipeline:
 - Entry cards include a bottom-right Listen control that plays the entry aloud.
 - While audio plays or prepares the next sentence, the active sentence stays highlighted in the active entry or reply and advances as playback progresses; it clears when playback stops or errors.
 - Sentence highlighting uses native sentence segmentation when available and preserves sentence boundaries around closing quotes or brackets.
-- Journals render as a full-width white canvas with plain text blocks for entries (no card styling) with a sticky header for mic controls and the optional text composer above the stream.
+- Journals render as a full-width white canvas with plain text blocks for entries (no card styling), a sticky full-width journal navbar with a desktop single row (sidebar toggle + JOURNAL left, centered mic/audio controls, user name + account menu right) that wraps the center controls onto a second row on smaller screens, plus a bottom text entry rail below the stream.
+- The journal footer divider aligns with the text entry rail width.
+- Audio queue labels and the Stop audio control appear only after audio playback has been activated at least once.
 - Replies render Markdown lists, code blocks, and inline emphasis (bold/italic/inline code).
 - Spoken audio strips saved-update blocks to stay concise.
 
 ### 8.4 Text Entry Visibility
 - The text composer is collapsed by default.
-- A labeled toggle in the journal header reveals it above the stream; a hide control sits next to Send.
+- A labeled toggle in the journal footer reveals it below the stream; a hide control sits next to Send.
+- The footer instructions are bolded and the Show text entry toggle is visually emphasized; on mobile, the instruction bar collapses to only the Show text entry button.
 - Text submissions always create a journal entry; the composer auto-collapses after send and replies still require explicit requests.
 
 ### 8.5 Keyboard Shortcuts
 - Spacebar toggles start, pause, and resume for voice capture.
 - Double-tap Spacebar stops capture; the mic button still stops and submits.
 - Spacebar shortcuts are ignored when typing in text inputs.
+- On desktop, a compact hint next to the Talk button reads: "Spacebar - press Space to start, pause, or resume; double-tap Space to stop and send, or use Show text entry." On mobile the navbar omits this hint.
 
 ### 8.6 Responsive Layout
 - The app sets a device-width viewport so responsive breakpoints stack panes on smaller screens.
@@ -138,12 +142,13 @@ The system is a three-hop pipeline:
 - The sidebar is collapsible and defaults to open on desktop while staying closed on mobile; a header toggle reopens it when hidden.
 - On mobile, selecting a past conversation closes the sidebar; tapping New Journal closes it and routes to `/` to start fresh.
 - On mobile, the journal entries panel stays tall enough to keep the stream readable.
+- On mobile, scrolling down hides the footer instruction bar and scrolling up reveals it.
 - On desktop, the sidebar stays open after selecting history, and its open/closed state persists across sessions.
 - The sidebar shows a loading state until local conversation history hydrates on the client.
 - Conversation rows show title-only entries with the updated timestamp beneath the title in smaller type; titles truncate to 30 characters, no previews, and a simple action menu; pinned and recent chats share the main list, ordered newest to oldest.
 - Conversations are created when the first entry is saved; the first entry snippet becomes the title unless renamed, falling back to "Untitled chat" if empty.
 - After a new entry is saved, the journal switches to the full-width white canvas view for that conversation.
-- Journal pages hide the top navigation bar.
+- Journal pages use a slim journal navbar: the header row anchors the sidebar toggle + JOURNAL label left, centers mic/audio controls, and places the user name + account menu right; on mobile the center controls drop beneath the header row to avoid horizontal scrolling; the marketing nav stays hidden.
 
 ### 8.7 First-Run Welcome
 ### 8.7 New Journal Welcome
@@ -153,7 +158,7 @@ The system is a three-hop pipeline:
 ### 8.8 Navigation
 - The "Say hey" logo uses the page accent green and links back to the homepage.
 - Primary navigation links include Home, Pricing, Welcome, About, and Login when logged out.
-- When a valid session cookie is present, the navigation replaces Login with Account linking to `/account`.
+- When a valid session cookie is present, the navigation replaces Login with a journal-style account control (initials) that links to `/account`.
 - The `/account` page shows the signed-in email, lets users edit their display name, provides a logout action, and redirects to `/auth` without a valid session.
 - Each journal has a unique `/journals/:id` URL; the marketing homepage remains `/`.
 - The sidebar New Journal action navigates to `/` before starting a new capture.
@@ -164,7 +169,7 @@ The system is a three-hop pipeline:
 ### 8.10 Marketing Home
 - The `/` route is a minimal landing page with a hero, pill navigation, and a CTA to start journaling.
 - The landing navigation includes Home, Welcome, About, and Login when logged out.
-- Logged-in visitors see Account (linking to `/account`) instead of Login.
+- Logged-in visitors see the journal-style account control (initials, linking to `/account`) instead of Login.
 - Logged-in visitors see a personalized greeting using their display name.
 - The landing page is separate from the journal workspace; new journals initiate from `/` and route to `/journals/new` once capture begins.
 - The `/journals/new` workspace does not create a conversation until the first entry is saved.
@@ -183,8 +188,8 @@ The system is a three-hop pipeline:
 - Free plan calls-to-action route to `/journals/new`.
 
 ### 8.12 Signed-in Personalization
-- Signed-in journal views surface a larger greeting button that uses the user's display name.
-- The greeting button opens a compact account menu with links to the welcome tour, account page, and logout action.
+- Signed-in journal views surface the account menu in the journal navbar and show the user name in the header.
+- The account menu links to Welcome, Account, and Logout; account access remains available via the site navigation on non-journal pages.
 
 ## 9. Tone and Reply Style
 - Helpful, calm, and concise.

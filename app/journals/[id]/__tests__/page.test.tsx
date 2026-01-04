@@ -52,10 +52,12 @@ describe("Journal page", () => {
     const html = renderToStaticMarkup(element);
 
     expect(html).toContain('data-layout="journal-canvas"');
+    expect(html).toContain("--page-accent:#6fb09a");
+    expect(html).toContain("--page-accent-strong:#1d554c");
     expect(html).not.toContain('data-nav="primary"');
   });
 
-  it("shows a personal greeting when the session has a display name", async () => {
+  it("surfaces the user name in the journal header", async () => {
     mockGetSessionIdentity.mockResolvedValue({
       displayName: "Taylor",
       email: "hello@example.com",

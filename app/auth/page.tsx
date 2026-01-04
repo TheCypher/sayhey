@@ -48,7 +48,11 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
       </div>
 
       <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-7xl flex-col gap-12 px-6 py-10 md:px-10 md:py-12">
-        <SiteNav current="auth" isAuthenticated={Boolean(session)} />
+        <SiteNav
+          current="auth"
+          isAuthenticated={Boolean(session)}
+          accountLabel={session?.email}
+        />
 
         <section className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center">
           <div

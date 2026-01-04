@@ -49,7 +49,11 @@ export default async function AboutPage() {
       </div>
 
       <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-6xl flex-col gap-14 px-6 py-12 md:px-10 md:py-20">
-        <SiteNav current="about" isAuthenticated={Boolean(session)} />
+        <SiteNav
+          current="about"
+          isAuthenticated={Boolean(session)}
+          accountLabel={session?.email}
+        />
 
         <section
           data-about="hero"

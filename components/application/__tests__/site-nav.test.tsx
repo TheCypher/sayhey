@@ -17,13 +17,15 @@ describe("SiteNav", () => {
     expect(html).toContain(">Login<");
   });
 
-  it("renders Account instead of Login when authenticated", () => {
+  it("renders the account control instead of Login when authenticated", () => {
     const html = renderToStaticMarkup(
-      <SiteNav current="about" isAuthenticated />
+      <SiteNav current="about" isAuthenticated accountLabel="Ada Lovelace" />
     );
 
+    expect(html).toContain('data-control="account-link"');
+    expect(html).toContain('data-role="account-initials"');
+    expect(html).toContain(">AL<");
     expect(html).toContain('href="/account"');
-    expect(html).toContain(">Account<");
     expect(html).not.toContain(">Login<");
   });
 

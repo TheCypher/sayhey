@@ -54,7 +54,11 @@ export default async function PricingPage() {
       </div>
 
       <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-6xl flex-col gap-12 px-6 py-12 md:px-10 md:py-16">
-        <SiteNav current="pricing" isAuthenticated={Boolean(session)} />
+        <SiteNav
+          current="pricing"
+          isAuthenticated={Boolean(session)}
+          accountLabel={session?.email}
+        />
 
         <header className="mx-auto flex w-full max-w-3xl flex-col items-center gap-5 text-center">
           <p className="text-xs uppercase tracking-[0.45em] text-[color:var(--page-muted)] animate-fade-up">

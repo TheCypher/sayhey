@@ -1,7 +1,7 @@
 # AGENTS.md
 
 Purpose: source of truth for feature scope and technical location. Update this file whenever you ship or adjust a feature, and mirror roadmap changes in `README.md` when applicable.
-Last updated: 2026-01-01
+Last updated: 2026-01-04
 
 ## Feature Catalog
 ### Voice Journal Pane
@@ -9,7 +9,8 @@ Last updated: 2026-01-01
 - What:
   - Push-to-talk capture with tap-to-stop transcription, clear mic/playback states, and sentence-level playback highlighting.
   - Entries render as single-paragraph text blocks with timestamps and a bottom-right Listen control.
-  - Full-width white `/journals/:id` canvas with a sticky mic header, signed-in greeting button + Welcome/Account/Logout menu, optional text composer, and spacebar cues; no top navbar.
+  - Full-width white `/journals/:id` canvas with a sticky journal navbar: desktop single-row header anchors sidebar toggle + JOURNAL left, centered mic/audio controls, and user name + account menu right; on mobile the mic/audio controls wrap beneath the header row to avoid horizontal scrolling and the compact Spacebar hint beside Talk is hidden; the hint reads "Spacebar - press Space to start, pause, or resume; double-tap Space to stop and send, or use Show text entry"; audio queue labels + Stop audio only appear after playback activates; bottom text entry rail with spacebar cues; no top navbar.
+  - Footer spacebar guidance stays compact and centered with bold instructions and an emphasized Show text entry link; on mobile the instruction bar collapses to only the Show text entry button and hides on scroll down/reappears on scroll up; the journal footer divider matches the text entry rail width.
   - Viewport-locked layout keeps shell and sidebar pinned; responsive stacking on small screens; text composer auto-collapses after send and saves text before optional Markdown-emphasis replies.
 - Where: `app/journals/[id]/page.tsx`, `app/journals/new/page.tsx`, `components/application/conversation-pane.tsx`, `components/application/conversation-sidebar.tsx`, `hooks/use-voice-capture.ts`, `hooks/use-tts-playback.ts`, `docs/features/conversation-pane.md`.
 - Why: Keep voice-first journaling and replies in one predictable workflow aligned to `docs/product-reference.md` and shadcn/ui.
@@ -120,7 +121,7 @@ Last updated: 2026-01-01
 ### Site Navigation
 - Status: shipped
 - What:
-  - Primary navigation bar links Home, Pricing, Welcome, About, and Login when logged out, swapping Login for Account when logged in.
+  - Primary navigation bar links Home, Pricing, Welcome, About, and Login when logged out, swapping Login for the journal-style account control (initials) linking to `/account` when logged in.
   - Green "Say hey" logo link returns to the homepage.
 - Where: `components/application/site-nav.tsx`, `components/home/home-shell.tsx`, `components/application/__tests__/site-nav.test.tsx`, `app/about/page.tsx`, `app/account/page.tsx`.
 - Why: Give users a consistent path between the journal and the about narrative.
@@ -173,6 +174,7 @@ Last updated: 2026-01-01
 - See `docs/agent-workflow.md` for the full checklist and commit/PR cadence.
 
 ## Working Rules
+- For code changes or implementation tasks (not general questions), start by restating the request with the phrase "Explain to me what I am asking so I know we are on the same page:" unless the task is obvious.
 - TDD always: write a failing Jest test before implementation and keep tests co-located with the code.
 - Keep documentation current: update this file for any feature change.
 - Product behavior is defined in `docs/product-reference.md`; update it before changing behavior.

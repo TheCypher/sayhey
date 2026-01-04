@@ -29,19 +29,21 @@
 - Push-to-talk mic button toggles between talk and stop; entries finalize on stop.
 - Spacebar toggles start, pause, and resume when focus is not inside a text input.
 - Double-tap Spacebar stops capture; the mic button still stops and submits.
+- On desktop, a compact hint next to the Talk button reads: "Spacebar - press Space to start, pause, or resume; double-tap Space to stop and send, or use Show text entry." On mobile the journal navbar omits this hint.
 - The journal stays silent unless the user issues a direct command.
 - Text submissions always add a journal entry; replies require explicit commands.
 - Journal entries live in a page-sized stream that stays fixed and scrolls within the pane.
 - Entry and reply headers show the saved date and time.
 - Each entry includes a bottom-right Listen button that stops current audio and speaks the entry.
 - The active sentence stays highlighted while audio playback runs or loads the next sentence.
-- Journals render as a full-width white canvas with plain text entries (no card styling) and a sticky header for mic controls plus the optional text composer above the stream.
+- Journals render as a full-width white canvas with plain text entries (no card styling), a sticky full-width journal navbar with a desktop single row (sidebar toggle + JOURNAL left, centered mic/audio controls, user name + account menu right) that wraps the center controls onto a second row on smaller screens, plus a bottom text entry rail below the stream.
+- Audio queue labels and the Stop audio control appear only after playback has been activated at least once.
 - Stop audio clears the entire queue.
 - Low-confidence transcripts still receive replies; field updates are suppressed server-side.
-- The text composer is collapsed by default and revealed via a header toggle above the stream; the hide control sits next to Send and the composer auto-collapses after submit.
+- The text composer is collapsed by default and revealed via a footer toggle below the stream; the hide control sits next to Send and the composer auto-collapses after submit.
 - Replies render Markdown blocks with inline emphasis (bold/italic/inline code).
 - The layout uses a device-width viewport so the history rail and journal pane stack on small screens.
-- Journal pages hide the top navigation bar.
+- Journal pages use a slim journal navbar: the header row anchors the sidebar toggle + JOURNAL label left, centers mic/audio controls, and places the user name + account menu right; on mobile the center controls drop beneath the header row to avoid horizontal scrolling; the marketing nav stays hidden.
 - On mobile, the journal entries panel stays tall enough to keep the stream readable.
 - On mobile, selecting a past conversation or starting a new journal closes the sidebar to reveal the journal; desktop keeps the sidebar open and persists its open/closed state.
 - Each journal renders at `/journals/:id`; the marketing homepage remains `/`, and new journals launch at `/journals/new`.

@@ -44,7 +44,11 @@ export default async function AccountPage() {
       </div>
 
       <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-6xl flex-col gap-12 px-6 py-12 md:px-10 md:py-16">
-        <SiteNav current="account" isAuthenticated />
+        <SiteNav
+          current="account"
+          isAuthenticated
+          accountLabel={displayName || user.email}
+        />
 
         <section className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
           <div className="space-y-6">

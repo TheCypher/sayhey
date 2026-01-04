@@ -12,6 +12,7 @@ type NavKey = "welcome" | "about" | "home" | "auth" | "pricing" | "account";
 type SiteNavProps = {
   current?: NavKey;
   isAuthenticated?: boolean;
+  accountLabel?: string | null;
 };
 
 const NAV_LINKS_PUBLIC: Array<{ key: NavKey; href: string; label: string }> = [
@@ -30,18 +31,67 @@ const NAV_LINKS_AUTHENTICATED: Array<{
   { key: "pricing", href: "/pricing", label: "Pricing" },
   { key: "welcome", href: "/welcome", label: "Welcome" },
   { key: "about", href: "/about", label: "About" },
-  { key: "account", href: "/account", label: "Account" },
 ];
 const BRAND_HREF = "/";
+const ACCOUNT_HREF = "/account";
 
 const BRAND_STYLES = {
   "--brand-accent": "#6fb09a",
   "--brand-accent-strong": "#1d554c",
 } as CSSProperties;
 
-export function SiteNav({ current, isAuthenticated = false }: SiteNavProps) {
+const getInitials = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "U";
+  }
+  const base = trimmed.includes("@") ? trimmed.split("@")[0] : trimmed;
+  const parts = base.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  const first = parts[0]?.[0] ?? "";
+  const last = parts[parts.length - 1]?.[0] ?? "";
+  return `${first}${last}`.toUpperCase() || "U";
+};
+
+export function SiteNav({
+  current,
+  isAuthenticated = false,
+  accountLabel = null,
+}: SiteNavProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navLinks = isAuthenticated ? NAV_LINKS_AUTHENTICATED : NAV_LINKS_PUBLIC;
+  const isAccountActive = current === "account";
+  const accountInitials = getInitials(accountLabel ?? "User");
+
+  const renderAccountLink = ({
+    className,
+    onClick,
+  }: {
+    className?: string;
+    onClick?: () => void;
+  } = {}) => (
+    <Link
+      href={ACCOUNT_HREF}
+      data-control="account-link"
+      aria-current={isAccountActive ? "page" : undefined}
+      className={cn(
+        buttonVariants({ variant: "ghost", size: "sm" }),
+        "h-9 rounded-full border border-[color:var(--page-border)] bg-white px-2 text-[11px] text-[color:var(--page-ink-strong)] shadow-sm shadow-black/5 hover:bg-[color:var(--page-card)]",
+        className
+      )}
+      onClick={onClick}
+    >
+      <span
+        data-role="account-initials"
+        className="flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--page-accent)] text-[11px] font-semibold text-[color:var(--page-ink-strong)]"
+      >
+        {accountInitials}
+      </span>
+      <span className="sr-only">Account</span>
+    </Link>
+  );
 
   return (
     <>
@@ -80,6 +130,7 @@ export function SiteNav({ current, isAuthenticated = false }: SiteNavProps) {
               </Link>
             );
           })}
+          {isAuthenticated && renderAccountLink()}
         </div>
         <div className="relative flex items-center gap-2 lg:hidden">
           <Button
@@ -120,6 +171,14 @@ export function SiteNav({ current, isAuthenticated = false }: SiteNavProps) {
                 </Link>
               );
             })}
+            {isAuthenticated && (
+              <div className="px-1 py-1">
+                {renderAccountLink({
+                  className: "w-full justify-center",
+                  onClick: () => setIsMobileMenuOpen(false),
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}

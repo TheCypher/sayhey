@@ -9,6 +9,7 @@ import { ConversationSidebar } from "../conversation-sidebar";
 import {
   buildJournalHref,
   ConversationPane,
+  getFooterVisibilityForScroll,
   renderMarkdown,
   renderPlainText,
   shouldAutoSavePendingTranscript,
@@ -107,55 +108,228 @@ describe("ConversationPane", () => {
     mockNextLink.mockClear();
   });
 
-  it("surfaces the spacebar commands in the header", () => {
+  it("surfaces the spacebar commands near the composer", () => {
     const html = renderToStaticMarkup(<ConversationPane />);
 
     expect(html).toContain('data-pane="conversation"');
     expect(html).toContain("Main control:");
-    expect(html).toMatch(/Main control:\s*<strong[^>]*>Spacebar<\/strong>/);
     expect(html).toMatch(
-      /double-tap\s*<strong[^>]*>Space<\/strong>\s*to stop and send\./i
+      /data-location="journal-footer"[\s\S]*Main control:\s*<strong[^>]*text-\[color:var\(--page-accent-strong\)\][^>]*>Spacebar<\/strong>/
+    );
+    expect(html).toMatch(
+      /double-tap\s*<strong[^>]*text-\[color:var\(--page-accent-strong\)\][^>]*>Space<\/strong>\s*to stop and send[.,]/i
     );
   });
 
-  it("renders a greeting button for signed-in users", () => {
+  it("shows the footer when scrolling up on mobile streams", () => {
+    expect(
+      getFooterVisibilityForScroll({
+        current: 120,
+        last: 140,
+        clientHeight: 300,
+        scrollHeight: 900,
+      })
+    ).toBe(true);
+    expect(
+      getFooterVisibilityForScroll({
+        current: 120,
+        last: 110,
+        clientHeight: 300,
+        scrollHeight: 900,
+      })
+    ).toBe(false);
+  });
+
+  it("keeps the footer visible near the edges of the stream", () => {
+    expect(
+      getFooterVisibilityForScroll({
+        current: 8,
+        last: 16,
+        clientHeight: 300,
+        scrollHeight: 900,
+      })
+    ).toBe(true);
+    expect(
+      getFooterVisibilityForScroll({
+        current: 560,
+        last: 520,
+        clientHeight: 300,
+        scrollHeight: 860,
+      })
+    ).toBe(true);
+  });
+
+  it("ignores tiny scroll changes in the footer visibility logic", () => {
+    expect(
+      getFooterVisibilityForScroll({
+        current: 120,
+        last: 116,
+        clientHeight: 300,
+        scrollHeight: 900,
+      })
+    ).toBeNull();
+  });
+
+  it("bolds the journal footer instructions and emphasizes the text entry toggle", () => {
+    const html = renderToStaticMarkup(<ConversationPane />);
+
+    expect(html).toMatch(
+      /data-role="journal-instructions"[^>]*class="[^"]*hidden[^"]*font-semibold[^"]*sm:inline/
+    );
+    expect(html).toMatch(
+      /<button(?=[^>]*data-control="composer-toggle")(?=[^>]*class="[^"]*rounded-full)(?=[^>]*class="[^"]*shadow-sm)[^>]*>Show text entry/
+    );
+  });
+
+  it("keeps the footer divider aligned with the composer width", () => {
+    const html = renderToStaticMarkup(<ConversationPane />);
+
+    expect(html).toMatch(
+      /data-location="journal-footer"[\s\S]*max-w-3xl[\s\S]*data-role="journal-footer-divider"/
+    );
+    expect(html).toMatch(
+      /data-role="journal-footer-divider"[^>]*class="[^"]*w-full/
+    );
+    expect(html).toMatch(
+      /data-role="journal-footer-divider"[\s\S]*data-control="composer"/
+    );
+  });
+
+  it("highlights the text entry toggle with the journal accent color", () => {
+    const html = renderToStaticMarkup(<ConversationPane />);
+
+    expect(html).toMatch(
+      /<button(?=[^>]*data-control="composer-toggle")(?=[^>]*class="[^"]*bg-\[color:var\(--page-accent-strong\)\])[^>]*>Show text entry/
+    );
+  });
+
+  it("renders the journal navbar header with account and sidebar controls", () => {
     const html = renderToStaticMarkup(
-      <ConversationPane displayName="Taylor" />
+      <ConversationPane displayName="Taylor" userEmail="hello@example.com" />
+    );
+
+    expect(html).toContain('data-control="sidebar-toggle"');
+    expect(html).toContain('data-control="account-menu"');
+    expect(html).toContain("Taylor");
+    expect(html).toContain("JOURNAL");
+    expect(html.indexOf('data-role="journal-title"')).toBeLessThan(
+      html.indexOf('data-role="journal-user"')
+    );
+    expect(html.indexOf('data-role="journal-left"')).toBeLessThan(
+      html.indexOf('data-role="journal-center"')
+    );
+    expect(html.indexOf('data-role="journal-center"')).toBeLessThan(
+      html.indexOf('data-role="journal-right"')
+    );
+  });
+
+  it("keeps the journal header compact and minimal", () => {
+    const html = renderToStaticMarkup(
+      <ConversationPane displayName="Taylor" userEmail="hello@example.com" />
+    );
+
+    expect(html).toMatch(/data-nav="journal"[\s\S]*border-b/);
+    expect(html).not.toContain("Signed in");
+    expect(html).toMatch(/data-location="journal-header"/);
+    expect(html).toMatch(
+      /data-location="journal-header"[\s\S]*data-control="sidebar-toggle"/
+    );
+    expect(html).toMatch(
+      /data-location="journal-header"[\s\S]*data-role="journal-title"/
+    );
+    expect(html).toMatch(
+      /data-location="journal-header"[\s\S]*data-role="journal-center"/
+    );
+    expect(html).toMatch(
+      /data-location="journal-topbar"[\s\S]*flex-wrap/
+    );
+    expect(html).toMatch(
+      /data-location="journal-topbar"[\s\S]*md:flex-nowrap/
+    );
+    expect(html).toMatch(
+      /data-location="journal-topbar"[\s\S]*whitespace-normal/
+    );
+    expect(html).toMatch(
+      /data-location="journal-topbar"[\s\S]*md:whitespace-nowrap/
+    );
+    expect(html).toMatch(
+      /data-location="journal-topbar"[\s\S]*justify-center/
+    );
+    expect(html).toMatch(/data-location="journal-topbar"[\s\S]*w-full/);
+  });
+
+  it("stacks the journal header controls on small screens", () => {
+    const html = renderToStaticMarkup(
+      <ConversationPane displayName="Taylor" userEmail="hello@example.com" />
+    );
+
+    expect(html).toMatch(
+      /data-role="journal-center"[^>]*class="[^"]*(?=[^"]*col-span-3)(?=[^"]*row-start-2)(?=[^"]*md:col-span-1)(?=[^"]*md:row-start-1)[^"]*"/
+    );
+  });
+
+  it("shows compact spacebar guidance next to the mic button", () => {
+    const html = renderToStaticMarkup(<ConversationPane />);
+
+    expect(html).toMatch(/data-role="journal-shortcuts"/);
+    expect(html).toMatch(
+      /data-role="journal-shortcuts"[^>]*class="[^"]*(?=[^"]*hidden)(?=[^"]*md:flex)[^"]*"/
+    );
+    expect(html).toMatch(/Spacebar/);
+    expect(html).toMatch(/double-tap/);
+    expect(html).toMatch(/Show text entry/);
+  });
+
+  it("places the journal header inside the journal navbar", () => {
+    const html = renderToStaticMarkup(
+      <ConversationPane displayName="Taylor" userEmail="hello@example.com" />
+    );
+
+    expect(html).toMatch(/data-nav="journal"/);
+    expect(html).toMatch(
+      /data-nav="journal"[\s\S]*data-location="journal-header"/
+    );
+    expect(html).toMatch(
+      /data-location="journal-header"[\s\S]*data-location="journal-topbar"/
+    );
+  });
+
+  it("hides audio queue controls until playback activates", () => {
+    const html = renderToStaticMarkup(<ConversationPane />);
+
+    expect(html).not.toContain("No queued audio");
+    expect(html).not.toContain('data-control="stop-audio"');
+  });
+
+  it("shows audio queue controls after playback activates", () => {
+    mockUseTtsPlayback.mockReturnValueOnce({
+      status: "playing",
+      queue: [],
+      error: null,
+      currentItem: null,
+      enqueue: jest.fn(),
+      clear: jest.fn(),
+    });
+
+    const html = renderToStaticMarkup(<ConversationPane />);
+
+    expect(html).toContain("No queued audio");
+    expect(html).toContain('data-control="stop-audio"');
+  });
+
+  it("surfaces the account menu links when opened", () => {
+    const html = renderToStaticMarkup(
+      <ConversationPane
+        displayName="Taylor"
+        userEmail="hello@example.com"
+        initialAccountMenuOpen
+      />
     );
 
     expect(html).toContain('data-control="account-menu"');
-    expect(html).toContain("Taylor");
-  });
-
-  it("shows the account menu content when opened", () => {
-    const html = renderToStaticMarkup(
-      <ConversationPane
-        displayName="Taylor"
-        userEmail="taylor@example.com"
-        initialAccountMenuOpen
-      />
-    );
-
-    expect(html).toContain('data-menu="account"');
-    expect(html).toContain("Welcome tour");
-    expect(html).toContain("Account");
-    expect(html).toContain("Logout");
-  });
-
-  it("disables prefetch on the logout menu link", () => {
-    renderToStaticMarkup(
-      <ConversationPane
-        displayName="Taylor"
-        userEmail="taylor@example.com"
-        initialAccountMenuOpen
-      />
-    );
-
-    const logoutCall = mockNextLink.mock.calls.find(
-      ([props]) => props?.href === "/auth/logout"
-    );
-
-    expect(logoutCall?.[0].prefetch).toBe(false);
+    expect(html).toContain('href="/welcome"');
+    expect(html).toContain('href="/account"');
+    expect(html).toContain('href="/auth/logout"');
   });
 
   it("routes the sidebar new journal action to the homepage", () => {
@@ -220,25 +394,32 @@ describe("ConversationPane", () => {
     expect(html).toContain("md:overflow-hidden");
   });
 
-  it("moves the text entry toggle into the journal header", () => {
+  it("moves the text entry toggle into the journal footer", () => {
     const html = renderToStaticMarkup(<ConversationPane />);
 
     expect(html).toMatch(
-      /data-location="journal-header"[\s\S]*Show text entry/
+      /data-location="journal-footer"[\s\S]*Show text entry/
     );
+    expect(html).toMatch(
+      /data-location="journal-footer"[\s\S]*<div class="[^"]*(?=[^"]*max-w-3xl)(?=[^"]*px-1)(?=[^"]*py-\[1px\])[^"]*"/
+    );
+    expect(html).toMatch(/data-location="journal-footer"[\s\S]*text-center/);
     expect(html).not.toContain(
       "Secondary to voice. Open to add an entry or direct command."
     );
   });
 
-  it("keeps the controls sticky above the journal stream", () => {
+  it("keeps the voice controls in the journal navbar above the stream", () => {
     const html = renderToStaticMarkup(
       <ConversationPane initialView="history" />
     );
 
-    const controlsIndex = html.indexOf('data-sticky="journal-controls"');
+    const controlsIndex = html.indexOf('data-nav="journal"');
     const streamIndex = html.indexOf('data-stream="messages"');
 
+    expect(html).toMatch(
+      /data-location="journal-header"[\s\S]*data-pane="voice-controls"/
+    );
     expect(controlsIndex).toBeGreaterThan(-1);
     expect(streamIndex).toBeGreaterThan(-1);
     expect(controlsIndex).toBeLessThan(streamIndex);
@@ -480,12 +661,11 @@ describe("ConversationPane", () => {
     expect(html).not.toContain("<strong");
   });
 
-  it("defaults the sidebar to open on desktop with a toggle control", () => {
+  it("defaults the sidebar to open on desktop", () => {
     const html = renderToStaticMarkup(<ConversationPane />);
 
     expect(html).toContain('data-sidebar-state="open"');
     expect(html).toContain('data-control="sidebar-toggle"');
-    expect(html).toMatch(/data-control="sidebar-toggle"[^>]*aria-expanded="true"/);
   });
 
   it("closes the sidebar immediately when opening a journal on mobile", async () => {

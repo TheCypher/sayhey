@@ -24,7 +24,6 @@ const NAV_ITEMS_AUTHENTICATED = [
   { label: "Pricing", href: "/pricing" },
   { label: "Welcome", href: "/welcome" },
   { label: "About", href: "/about" },
-  { label: "Account", href: "/account" },
 ];
 
 const ORBIT_VARIANTS = [
@@ -104,14 +103,31 @@ type OrbitConfig = {
   duration: string;
 };
 
+const getInitials = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "U";
+  }
+  const base = trimmed.includes("@") ? trimmed.split("@")[0] : trimmed;
+  const parts = base.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  const first = parts[0]?.[0] ?? "";
+  const last = parts[parts.length - 1]?.[0] ?? "";
+  return `${first}${last}`.toUpperCase() || "U";
+};
+
 type HomeShellProps = {
   isAuthenticated?: boolean;
   displayName?: string | null;
+  accountLabel?: string | null;
 };
 
 export function HomeShell({
   isAuthenticated = false,
   displayName,
+  accountLabel = null,
 }: HomeShellProps) {
   const router = useRouter();
   const greetingName = displayName?.trim();
@@ -141,6 +157,7 @@ export function HomeShell({
   const navItems = isAuthenticated
     ? NAV_ITEMS_AUTHENTICATED
     : NAV_ITEMS_PUBLIC;
+  const accountInitials = getInitials(accountLabel ?? "User");
   useEffect(() => {
     const pickInRange = (min: number, max: number) =>
       Math.random() * (max - min) + min;
@@ -276,6 +293,24 @@ export function HomeShell({
                     {item.label}
                   </Link>
                 ))}
+                {isAuthenticated && (
+                  <Link
+                    href="/account"
+                    data-control="account-link"
+                    className={cn(
+                      buttonVariants({ variant: "ghost", size: "sm" }),
+                      "h-9 rounded-full border border-[color:var(--page-border)] bg-white px-2 text-[11px] text-[color:var(--page-ink-strong)] shadow-sm shadow-black/5 hover:bg-[color:var(--page-card)]"
+                    )}
+                  >
+                    <span
+                      data-role="account-initials"
+                      className="flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--page-accent)] text-[11px] font-semibold text-[color:var(--page-ink-strong)]"
+                    >
+                      {accountInitials}
+                    </span>
+                    <span className="sr-only">Account</span>
+                  </Link>
+                )}
               </div>
               <div className="relative flex items-center gap-2 lg:hidden">
                 <Button
@@ -312,6 +347,27 @@ export function HomeShell({
                       {item.label}
                     </Link>
                   ))}
+                  {isAuthenticated && (
+                    <div className="px-1 py-1">
+                      <Link
+                        href="/account"
+                        data-control="account-link"
+                        className={cn(
+                          buttonVariants({ variant: "ghost", size: "sm" }),
+                          "h-9 w-full justify-center rounded-full border border-[color:var(--page-border)] bg-white px-2 text-[11px] text-[color:var(--page-ink-strong)] shadow-sm shadow-black/5 hover:bg-[color:var(--page-card)]"
+                        )}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        <span
+                          data-role="account-initials"
+                          className="flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--page-accent)] text-[11px] font-semibold text-[color:var(--page-ink-strong)]"
+                        >
+                          {accountInitials}
+                        </span>
+                        <span className="sr-only">Account</span>
+                      </Link>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

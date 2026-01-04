@@ -24,7 +24,11 @@ export default async function WelcomePage() {
       </div>
 
       <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-6xl flex-col gap-10 px-6 py-10 md:px-10 md:py-14">
-        <SiteNav current="welcome" isAuthenticated={Boolean(session)} />
+        <SiteNav
+          current="welcome"
+          isAuthenticated={Boolean(session)}
+          accountLabel={session?.email}
+        />
 
         <div className="grid w-full gap-8 lg:grid-cols-[1.1fr_0.9fr]">
           <WelcomePanel variant="card" />

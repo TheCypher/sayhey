@@ -10,6 +10,7 @@ export default async function Home() {
   const token = cookieStore.get("sayhey_session")?.value;
   const session = token ? verifySessionToken(token) : null;
   let displayName: string | undefined;
+  let accountLabel: string | null = null;
 
   if (session) {
     const user = await prisma.user.findUnique({
@@ -22,9 +23,14 @@ export default async function Home() {
     }
 
     displayName = user?.displayName?.trim() || undefined;
+    accountLabel = displayName ?? session.email;
   }
 
   return (
-    <HomeShell isAuthenticated={Boolean(session)} displayName={displayName} />
+    <HomeShell
+      isAuthenticated={Boolean(session)}
+      displayName={displayName}
+      accountLabel={accountLabel}
+    />
   );
 }

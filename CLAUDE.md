@@ -30,6 +30,7 @@
 - Follow the "Agent Docs Sync Workflow" in `AGENTS.md`; update AGENTS.md before adding or revising shared rules here.
 - If a rule is shared, keep the source in AGENTS.md and add only a short Claude-only reminder when it helps execution.
 - If AGENTS.md and CLAUDE.md conflict, treat AGENTS.md as authoritative and resolve the mismatch immediately.
+- For code changes or implementation tasks (not general questions), start by restating the request with the phrase "Explain to me what I am asking so I know we are on the same page:" unless the task is obvious.
 - Use `docs/agent-workflow.md` as the checklist for updates and commit/PR notes.
 
 ## Sync Notice
