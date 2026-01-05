@@ -81,6 +81,74 @@ describe("conversation service", () => {
     expect(transcript?.messages).toHaveLength(2);
   });
 
+  it("updates the first message and refreshes the preview/title", async () => {
+    const { service } = await buildService();
+
+    const created = await service.createConversation();
+    await service.appendMessage(created.id, {
+      id: "msg-1",
+      role: "user",
+      content: "First entry",
+      createdAt: 1700000000100,
+    });
+    await service.appendMessage(created.id, {
+      id: "msg-2",
+      role: "assistant",
+      content: "Second reply",
+      createdAt: 1700000000200,
+    });
+
+    const attachments = [
+      {
+        id: "att-1",
+        name: "Image.png",
+        mimeType: "image/png",
+        size: 1200,
+        dataUrl: "data:image/png;base64,abcd",
+      },
+    ];
+
+    await service.updateMessage(created.id, "msg-1", {
+      content: "Edited entry",
+      attachments,
+    });
+
+    const transcript = await service.loadConversation(created.id);
+    expect(transcript?.messages[0]?.content).toBe("Edited entry");
+    expect(transcript?.messages[0]?.attachments).toEqual(attachments);
+
+    const list = await service.listConversations();
+    const item = list.find((entry) => entry.id === created.id);
+    expect(item?.preview).toBe("Edited entry");
+    expect(item?.title).toBe("Edited entry");
+  });
+
+  it("keeps the preview stable when updating a later message", async () => {
+    const { service } = await buildService();
+
+    const created = await service.createConversation();
+    await service.appendMessage(created.id, {
+      id: "msg-1",
+      role: "user",
+      content: "First entry",
+      createdAt: 1700000000100,
+    });
+    await service.appendMessage(created.id, {
+      id: "msg-2",
+      role: "assistant",
+      content: "Second reply",
+      createdAt: 1700000000200,
+    });
+
+    await service.updateMessage(created.id, "msg-2", {
+      content: "Updated reply",
+    });
+
+    const list = await service.listConversations();
+    const item = list.find((entry) => entry.id === created.id);
+    expect(item?.preview).toBe("First entry");
+  });
+
   it("deletes conversations and transcripts", async () => {
     const { service } = await buildService();
 

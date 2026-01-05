@@ -28,6 +28,7 @@
 - Spacebar toggles start, pause, and resume when focus is not inside a text input.
 - Double-tap Spacebar stops capture; the mic button still stops and submits.
 - Show immediate recording feedback and a processing indicator.
+- Use state-based Talk button colors (waiting, listening, paused, processing) to reinforce mic status.
 - Errors are inline and do not block voice capture.
 
 ## API/Integration

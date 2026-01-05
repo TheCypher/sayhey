@@ -12,7 +12,7 @@
 ## Non-Goals
 - Server-side transcript storage.
 - Streaming transcripts in real time.
-- Rich text composer features (attachments, formatting controls).
+- Rich text formatting toolbars beyond Undo/Restore and inline image attachments.
 
 ## Architecture
 - `components/application/conversation-pane.tsx` hosts the full experience.
@@ -23,10 +23,12 @@
 
 ## Data Model
 - Entries and replies persist locally in IndexedDB; transcripts are encrypted at rest.
+- Entry image attachments are stored inside encrypted transcripts with cursor offsets for inline placement.
 - The conversation history sent to the server is trimmed to the last 6 messages; the pending turn is sent separately.
 
 ## UI/UX Notes
 - Push-to-talk mic button toggles between talk and stop; entries finalize on stop.
+- The Talk button uses warm sunset colors to signal waiting, listening, paused, and processing states.
 - Spacebar toggles start, pause, and resume when focus is not inside a text input.
 - Double-tap Spacebar stops capture; the mic button still stops and submits.
 - On desktop, a compact hint next to the Talk button reads: "Spacebar - press Space to start, pause, or resume; double-tap Space to stop and send, or use Show text entry." On mobile the journal navbar omits this hint.
@@ -34,14 +36,18 @@
 - Text submissions always add a journal entry; replies require explicit commands.
 - Journal entries live in a page-sized stream that stays fixed and scrolls within the pane.
 - Entry and reply headers show the saved date and time.
-- Each entry includes a bottom-right Listen button that stops current audio and speaks the entry.
+- Each entry includes bottom-right Listen and Intent buttons; Listen stops current audio and speaks the entry, while Intent summarizes the entry's goal and motivation in the user's voice without advice.
+- Intent summaries can be saved per entry; saved intents stay visible until deleted.
+- Intent summaries include inline citations; hovering or tapping a citation highlights the referenced sentence, paragraph, or image in the entry.
 - The active sentence stays highlighted while audio playback runs or loads the next sentence.
-- Journals render as a full-width white canvas with plain text entries (no card styling), a sticky full-width journal navbar with a desktop single row (sidebar toggle + JOURNAL left, centered mic/audio controls, user name + account menu right) that wraps the center controls onto a second row on smaller screens, plus a bottom text entry rail below the stream.
+- Journals render as a full-width white canvas with editable text entries (no card styling), a sticky full-width journal navbar with a desktop single row (sidebar toggle + JOURNAL left, centered mic/audio controls, user name + account menu right) that wraps the center controls onto a second row on smaller screens, plus a bottom text entry rail below the stream.
 - Audio queue labels and the Stop audio control appear only after playback has been activated at least once.
 - Stop audio clears the entire queue.
 - Low-confidence transcripts still receive replies; field updates are suppressed server-side.
 - The text composer is collapsed by default and revealed via a footer toggle below the stream; the hide control sits next to Send and the composer auto-collapses after submit.
 - Replies render Markdown blocks with inline emphasis (bold/italic/inline code).
+- User entries are inline-editable in place; focus reveals a compact editor-style toolbar with labeled Undo and Restore controls, and Restore returns the entry to its pre-edit text and attachments.
+- Drag-and-drop image attachments insert at the caret and render inline, while entry text remains plain and attachments stay locked in place during edits.
 - The layout uses a device-width viewport so the history rail and journal pane stack on small screens.
 - Journal pages use a slim journal navbar: the header row anchors the sidebar toggle + JOURNAL label left, centers mic/audio controls, and places the user name + account menu right; on mobile the center controls drop beneath the header row to avoid horizontal scrolling; the marketing nav stays hidden.
 - On mobile, the journal entries panel stays tall enough to keep the stream readable.
@@ -55,6 +61,7 @@
 - STT: `/api/stt`
 - Chat: `/api/chat/turns`
 - TTS: `/api/tts`
+- Intent: `/api/intent`
 
 ## Tests
 - `components/application/__tests__/conversation-pane.test.tsx`

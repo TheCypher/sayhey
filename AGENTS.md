@@ -8,11 +8,14 @@ Last updated: 2026-01-04
 - Status: shipped
 - What:
   - Push-to-talk capture with tap-to-stop transcription, clear mic/playback states, and sentence-level playback highlighting.
-  - Entries render as single-paragraph text blocks with timestamps and a bottom-right Listen control.
+  - Talk button colors map to waiting/listening/paused/processing using a warm sunset palette on journal pages.
+  - Entries render as editable text blocks with timestamps and a bottom-right Listen control; user entries are inline-editable in place with a compact editor-style toolbar with labeled Undo/Restore controls that reset to the pre-edit text and attachments.
+  - Entry editing supports drag-and-drop image attachments inserted at the caret and rendered inline; attachments stay locked in place while editing and track cursor positions while entry text stays plain.
+  - Entry actions include an Intent control that summarizes the entry's goal and motivation in the user's voice without advice, cites sources that highlight the referenced sentence/paragraph/attachment on hover or tap, and offers save/delete to persist or clear summaries.
   - Full-width white `/journals/:id` canvas with a sticky journal navbar: desktop single-row header anchors sidebar toggle + JOURNAL left, centered mic/audio controls, and user name + account menu right; on mobile the mic/audio controls wrap beneath the header row to avoid horizontal scrolling and the compact Spacebar hint beside Talk is hidden; the hint reads "Spacebar - press Space to start, pause, or resume; double-tap Space to stop and send, or use Show text entry"; audio queue labels + Stop audio only appear after playback activates; bottom text entry rail with spacebar cues; no top navbar.
   - Footer spacebar guidance stays compact and centered with bold instructions and an emphasized Show text entry link; on mobile the instruction bar collapses to only the Show text entry button and hides on scroll down/reappears on scroll up; the journal footer divider matches the text entry rail width.
   - Viewport-locked layout keeps shell and sidebar pinned; responsive stacking on small screens; text composer auto-collapses after send and saves text before optional Markdown-emphasis replies.
-- Where: `app/journals/[id]/page.tsx`, `app/journals/new/page.tsx`, `components/application/conversation-pane.tsx`, `components/application/conversation-sidebar.tsx`, `hooks/use-voice-capture.ts`, `hooks/use-tts-playback.ts`, `docs/features/conversation-pane.md`.
+- Where: `app/journals/[id]/page.tsx`, `app/journals/new/page.tsx`, `components/application/conversation-pane.tsx`, `components/application/conversation-sidebar.tsx`, `hooks/use-voice-capture.ts`, `hooks/use-tts-playback.ts`, `hooks/use-local-conversations.ts`, `lib/services/conversations.ts`, `lib/storage/types.ts`, `app/api/intent/route.ts`, `agents/intent.ts`, `docs/features/conversation-pane.md`.
 - Why: Keep voice-first journaling and replies in one predictable workflow aligned to `docs/product-reference.md` and shadcn/ui.
 
 ### New Journal Welcome Tour
@@ -106,6 +109,7 @@ Last updated: 2026-01-04
   - Hero includes a signed-in display-name greeting plus the full-width streaming orbit text accent with randomized flow and faster motion.
   - In-place sidebar toggle for local history and a primary CTA into the journal workspace.
   - Animated listening controls: Space starts capture, double-tap Space stops, then routes to `/journals/new` and `/journals/:id` after auto-save.
+  - Talk control colors map to waiting/listening/paused/processing using the green brand accents on the homepage.
 - Where: `app/page.tsx`, `components/home/home-shell.tsx`, `components/home/home-spacebar-capture.tsx`, `components/application/conversation-sidebar.tsx`, `lib/pending-transcript.ts`, `app/globals.css`.
 - Why: Provide a focused first impression before entering the voice journal while keeping the Spacebar workflow front and center.
 

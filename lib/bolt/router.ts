@@ -2,6 +2,7 @@ import { createAppRouter, InMemoryStore, type AppRouter } from "@bolt-ai/core";
 import { createGroqProvider } from "@bolt-ai/providers-groq";
 
 import helperAgent from "@/agents/helper";
+import intentAgent from "@/agents/intent";
 
 let routerPromise: Promise<AppRouter> | null = null;
 
@@ -15,6 +16,7 @@ export const getBoltRouter = async () => {
 
       router.registerAgents({
         helper: helperAgent,
+        intent: intentAgent,
       });
 
       return router;

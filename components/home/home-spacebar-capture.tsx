@@ -54,6 +54,8 @@ const isSpacebarKey = (event: KeyboardEvent) =>
 
 const SPACEBAR_DOUBLE_TAP_MS = 280;
 
+type TalkTone = "waiting" | "listening" | "paused" | "processing";
+
 const isSpacebarShortcut = (event: KeyboardEvent) => {
   if (event.repeat || event.altKey || event.ctrlKey || event.metaKey) {
     return false;
@@ -90,6 +92,31 @@ const shouldStopOnSpacebarDoubleTap = (
   }
 
   return status === "recording" || status === "paused";
+};
+
+const getTalkTone = (status: VoiceCaptureStatus): TalkTone => {
+  switch (status) {
+    case "recording":
+      return "listening";
+    case "paused":
+      return "paused";
+    case "processing":
+    case "ready":
+      return "processing";
+    default:
+      return "waiting";
+  }
+};
+
+const TALK_TONE_CLASSES: Record<TalkTone, string> = {
+  waiting:
+    "border-[color:var(--talk-waiting-border)] bg-[color:var(--talk-waiting-bg)] text-[color:var(--talk-waiting-fg)] hover:bg-[color:var(--talk-waiting-hover)]",
+  listening:
+    "border-transparent bg-[color:var(--talk-listening-bg)] text-[color:var(--talk-listening-fg)] hover:bg-[color:var(--talk-listening-hover)]",
+  paused:
+    "border-[color:var(--talk-paused-border)] bg-[color:var(--talk-paused-bg)] text-[color:var(--talk-paused-fg)] hover:bg-[color:var(--talk-paused-hover)]",
+  processing:
+    "border-transparent bg-[color:var(--talk-processing-bg)] text-[color:var(--talk-processing-fg)]",
 };
 
 export function HomeSpacebarCapture() {
@@ -184,7 +211,8 @@ export function HomeSpacebarCapture() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [pauseRecording, resumeRecording, startRecording, stopRecording]);
 
-  const isListening = status === "recording" || status === "paused";
+  const isCapturing = status === "recording" || status === "paused";
+  const talkTone = getTalkTone(status);
   const isProcessing = status === "processing";
   const statusCopy = useMemo(() => {
     if (status === "recording") {
@@ -243,33 +271,31 @@ export function HomeSpacebarCapture() {
         <div
           className={cn(
             "pointer-events-none absolute h-24 w-24 rounded-full border opacity-80",
-            isListening
-              ? "border-[color:var(--page-accent)] opacity-90 animate-soft-pulse"
+            isCapturing
+              ? "border-[color:var(--talk-listening-bg)] opacity-90 animate-soft-pulse"
               : "border-[color:var(--page-border)]"
           )}
         />
         <div
           className={cn(
             "pointer-events-none absolute h-32 w-32 rounded-full border opacity-60 [animation-delay:1.2s]",
-            isListening
-              ? "border-[color:var(--page-accent)] opacity-70 animate-soft-pulse"
+            isCapturing
+              ? "border-[color:var(--talk-listening-bg)] opacity-70 animate-soft-pulse"
               : "border-[color:var(--page-border)]"
           )}
         />
         <Button
           type="button"
           size="lg"
-          variant={isListening ? "default" : "outline"}
+          variant={isCapturing ? "default" : "outline"}
           disabled={isProcessing}
           onClick={handlePrimary}
           className={cn(
-            "h-16 w-16 rounded-full p-0 shadow-md shadow-black/10 transition",
-            isListening
-              ? "bg-[color:var(--page-accent-strong)] text-[color:var(--page-paper)] hover:bg-[color:var(--page-accent)]"
-              : "border-[color:var(--page-border)] bg-white text-[color:var(--page-ink-strong)] hover:bg-[color:var(--page-paper)]"
+            "h-16 w-16 rounded-full border p-0 shadow-md shadow-black/10 transition disabled:opacity-100",
+            TALK_TONE_CLASSES[talkTone]
           )}
-          aria-label={isListening ? "Stop recording" : "Start recording"}
-          aria-pressed={isListening}
+          aria-label={isCapturing ? "Stop recording" : "Start recording"}
+          aria-pressed={isCapturing}
         >
           <Mic className="h-5 w-5" />
         </Button>

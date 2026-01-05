@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { useLocalConversations } from "@/hooks/use-local-conversations";
 import { useResponsiveSidebar } from "@/hooks/use-responsive-sidebar";
 import { useTtsPlayback } from "@/hooks/use-tts-playback";
+import { useVoiceCapture } from "@/hooks/use-voice-capture";
 import { useRouter } from "next/navigation";
 
 import { ConversationSidebar } from "../conversation-sidebar";
@@ -10,8 +11,13 @@ import {
   buildJournalHref,
   ConversationPane,
   getFooterVisibilityForScroll,
+  getEntryRestoreSnapshot,
+  getIntentCitationTargets,
+  isEntryAttachmentTarget,
+  parseIntentCitations,
   renderMarkdown,
   renderPlainText,
+  shouldCommitEntryBlur,
   shouldAutoSavePendingTranscript,
 } from "../conversation-pane";
 
@@ -42,6 +48,10 @@ jest.mock("@/hooks/use-tts-playback", () => ({
   useTtsPlayback: jest.fn(),
 }));
 
+jest.mock("@/hooks/use-voice-capture", () => ({
+  useVoiceCapture: jest.fn(),
+}));
+
 jest.mock("next/navigation", () => ({
   useRouter: jest.fn(),
 }));
@@ -60,9 +70,26 @@ describe("ConversationPane", () => {
   const mockUseTtsPlayback = useTtsPlayback as jest.MockedFunction<
     typeof useTtsPlayback
   >;
+  const mockUseVoiceCapture = useVoiceCapture as jest.MockedFunction<
+    typeof useVoiceCapture
+  >;
   const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
   const mockConversationSidebar =
     ConversationSidebar as jest.MockedFunction<typeof ConversationSidebar>;
+
+  const buildVoiceCaptureReturn = (
+    status: ReturnType<typeof useVoiceCapture>["status"]
+  ): ReturnType<typeof useVoiceCapture> => ({
+    status,
+    transcript: "",
+    confidence: null,
+    error: null,
+    startRecording: jest.fn().mockResolvedValue(undefined),
+    pauseRecording: jest.fn(),
+    resumeRecording: jest.fn(),
+    stopRecording: jest.fn().mockResolvedValue(undefined),
+    reset: jest.fn(),
+  });
 
   beforeEach(() => {
     mockUseLocalConversations.mockReturnValue({
@@ -74,6 +101,7 @@ describe("ConversationPane", () => {
       createConversation: jest.fn().mockResolvedValue("conv-1"),
       openConversation: jest.fn().mockResolvedValue(undefined),
       appendMessage: jest.fn().mockResolvedValue("conv-1"),
+      updateMessage: jest.fn().mockResolvedValue(null),
       renameConversation: jest.fn().mockResolvedValue(undefined),
       pinConversation: jest.fn().mockResolvedValue(undefined),
       archiveConversation: jest.fn().mockResolvedValue(undefined),
@@ -96,6 +124,7 @@ describe("ConversationPane", () => {
       enqueue: jest.fn(),
       clear: jest.fn(),
     });
+    mockUseVoiceCapture.mockReturnValue(buildVoiceCaptureReturn("idle"));
     mockUseRouter.mockReturnValue({ replace: jest.fn(), push: jest.fn() });
   });
 
@@ -103,6 +132,7 @@ describe("ConversationPane", () => {
     mockUseLocalConversations.mockReset();
     mockUseResponsiveSidebar.mockReset();
     mockUseTtsPlayback.mockReset();
+    mockUseVoiceCapture.mockReset();
     mockUseRouter.mockReset();
     mockConversationSidebar.mockClear();
     mockNextLink.mockClear();
@@ -280,6 +310,36 @@ describe("ConversationPane", () => {
     expect(html).toMatch(/Show text entry/);
   });
 
+  it("colors the Talk button by mic state", () => {
+    mockUseVoiceCapture.mockReturnValue(buildVoiceCaptureReturn("idle"));
+    let html = renderToStaticMarkup(<ConversationPane />);
+
+    expect(html).toMatch(
+      /data-control="mic"[^>]*class="[^"]*bg-\[color:var\(--talk-waiting-bg\)\]/
+    );
+
+    mockUseVoiceCapture.mockReturnValue(buildVoiceCaptureReturn("recording"));
+    html = renderToStaticMarkup(<ConversationPane />);
+
+    expect(html).toMatch(
+      /data-control="mic"[^>]*class="[^"]*bg-\[color:var\(--talk-listening-bg\)\]/
+    );
+
+    mockUseVoiceCapture.mockReturnValue(buildVoiceCaptureReturn("paused"));
+    html = renderToStaticMarkup(<ConversationPane />);
+
+    expect(html).toMatch(
+      /data-control="mic"[^>]*class="[^"]*bg-\[color:var\(--talk-paused-bg\)\]/
+    );
+
+    mockUseVoiceCapture.mockReturnValue(buildVoiceCaptureReturn("processing"));
+    html = renderToStaticMarkup(<ConversationPane />);
+
+    expect(html).toMatch(
+      /data-control="mic"[^>]*class="[^"]*bg-\[color:var\(--talk-processing-bg\)\]/
+    );
+  });
+
   it("places the journal header inside the journal navbar", () => {
     const html = renderToStaticMarkup(
       <ConversationPane displayName="Taylor" userEmail="hello@example.com" />
@@ -455,6 +515,7 @@ describe("ConversationPane", () => {
       createConversation: jest.fn().mockResolvedValue("conv-1"),
       openConversation: jest.fn().mockResolvedValue(undefined),
       appendMessage: jest.fn().mockResolvedValue("conv-1"),
+      updateMessage: jest.fn().mockResolvedValue(null),
       renameConversation: jest.fn().mockResolvedValue(undefined),
       pinConversation: jest.fn().mockResolvedValue(undefined),
       archiveConversation: jest.fn().mockResolvedValue(undefined),
@@ -493,6 +554,7 @@ describe("ConversationPane", () => {
       createConversation: jest.fn().mockResolvedValue("conv-1"),
       openConversation: jest.fn().mockResolvedValue(undefined),
       appendMessage: jest.fn().mockResolvedValue("conv-1"),
+      updateMessage: jest.fn().mockResolvedValue(null),
       renameConversation: jest.fn().mockResolvedValue(undefined),
       pinConversation: jest.fn().mockResolvedValue(undefined),
       archiveConversation: jest.fn().mockResolvedValue(undefined),
@@ -508,6 +570,269 @@ describe("ConversationPane", () => {
     expect(matches).toHaveLength(2);
     expect(html).toContain('data-message-id="msg-1"');
     expect(html).toContain('data-message-id="msg-2"');
+  });
+
+  it("adds an intent control for user entries only", () => {
+    mockUseLocalConversations.mockReturnValueOnce({
+      conversations: [],
+      activeConversationId: "conv-1",
+      messages: [
+        {
+          id: "msg-1",
+          role: "user",
+          content: "Hello",
+          createdAt: 1700000000000,
+        },
+        {
+          id: "msg-2",
+          role: "assistant",
+          content: "Hi there",
+          createdAt: 1700000001000,
+        },
+      ],
+      isLoading: false,
+      error: null,
+      createConversation: jest.fn().mockResolvedValue("conv-1"),
+      openConversation: jest.fn().mockResolvedValue(undefined),
+      appendMessage: jest.fn().mockResolvedValue("conv-1"),
+      updateMessage: jest.fn().mockResolvedValue(null),
+      renameConversation: jest.fn().mockResolvedValue(undefined),
+      pinConversation: jest.fn().mockResolvedValue(undefined),
+      archiveConversation: jest.fn().mockResolvedValue(undefined),
+      deleteConversation: jest.fn().mockResolvedValue(undefined),
+      refresh: jest.fn().mockResolvedValue(undefined),
+    });
+
+    const html = renderToStaticMarkup(
+      <ConversationPane initialView="history" />
+    );
+
+    const matches = html.match(/data-control="entry-intent"/g) ?? [];
+    expect(matches).toHaveLength(1);
+    expect(html).toMatch(
+      /<button(?=[^>]*data-control="entry-intent")(?=[^>]*data-message-id="msg-1")[^>]*>Intent/
+    );
+  });
+
+  it("renders saved intents with a delete control", () => {
+    mockUseLocalConversations.mockReturnValueOnce({
+      conversations: [],
+      activeConversationId: "conv-1",
+      messages: [
+        {
+          id: "msg-1",
+          role: "user",
+          content: "Hello",
+          intent: "I want to feel grounded before class.",
+          createdAt: 1700000000000,
+        },
+      ],
+      isLoading: false,
+      error: null,
+      createConversation: jest.fn().mockResolvedValue("conv-1"),
+      openConversation: jest.fn().mockResolvedValue(undefined),
+      appendMessage: jest.fn().mockResolvedValue("conv-1"),
+      updateMessage: jest.fn().mockResolvedValue(null),
+      renameConversation: jest.fn().mockResolvedValue(undefined),
+      pinConversation: jest.fn().mockResolvedValue(undefined),
+      archiveConversation: jest.fn().mockResolvedValue(undefined),
+      deleteConversation: jest.fn().mockResolvedValue(undefined),
+      refresh: jest.fn().mockResolvedValue(undefined),
+    });
+
+    const html = renderToStaticMarkup(
+      <ConversationPane initialView="history" />
+    );
+
+    expect(html).toContain("I want to feel grounded before class.");
+    expect(html).toContain('data-control="intent-delete"');
+    expect(html).toContain(
+      'space-y-2 rounded-sm border border-[color:var(--page-border)] bg-[color:var(--page-card)] p-4 text-sm text-[color:var(--page-ink-strong)] shadow-sm shadow-black/5'
+    );
+  });
+
+  it("renders intent citations as interactive markers", () => {
+    mockUseLocalConversations.mockReturnValueOnce({
+      conversations: [],
+      activeConversationId: "conv-1",
+      messages: [
+        {
+          id: "msg-1",
+          role: "user",
+          content: "First sentence. Second sentence.",
+          intent: "I want to slow down and focus. [1]",
+          intentSources: [{ id: "1", type: "sentence", sentenceIndex: 0 }],
+          createdAt: 1700000000000,
+        },
+      ],
+      isLoading: false,
+      error: null,
+      createConversation: jest.fn().mockResolvedValue("conv-1"),
+      openConversation: jest.fn().mockResolvedValue(undefined),
+      appendMessage: jest.fn().mockResolvedValue("conv-1"),
+      updateMessage: jest.fn().mockResolvedValue(null),
+      renameConversation: jest.fn().mockResolvedValue(undefined),
+      pinConversation: jest.fn().mockResolvedValue(undefined),
+      archiveConversation: jest.fn().mockResolvedValue(undefined),
+      deleteConversation: jest.fn().mockResolvedValue(undefined),
+      refresh: jest.fn().mockResolvedValue(undefined),
+    });
+
+    const html = renderToStaticMarkup(
+      <ConversationPane initialView="history" />
+    );
+
+    expect(html).toContain('data-intent-citation="true"');
+    expect(html).toContain('data-citation-id="1"');
+  });
+
+  it("renders inline editable entries with an editor-style toolbar", () => {
+    mockUseLocalConversations.mockReturnValueOnce({
+      conversations: [],
+      activeConversationId: "conv-1",
+      messages: [
+        {
+          id: "msg-1",
+          role: "user",
+          content: "Editable entry",
+          createdAt: 1700000000000,
+        },
+        {
+          id: "msg-2",
+          role: "assistant",
+          content: "Read-only reply",
+          createdAt: 1700000001000,
+        },
+      ],
+      isLoading: false,
+      error: null,
+      createConversation: jest.fn().mockResolvedValue("conv-1"),
+      openConversation: jest.fn().mockResolvedValue(undefined),
+      appendMessage: jest.fn().mockResolvedValue("conv-1"),
+      updateMessage: jest.fn().mockResolvedValue(null),
+      renameConversation: jest.fn().mockResolvedValue(undefined),
+      pinConversation: jest.fn().mockResolvedValue(undefined),
+      archiveConversation: jest.fn().mockResolvedValue(undefined),
+      deleteConversation: jest.fn().mockResolvedValue(undefined),
+      refresh: jest.fn().mockResolvedValue(undefined),
+    });
+
+    const html = renderToStaticMarkup(
+      <ConversationPane initialView="history" />
+    );
+
+    const editableMatches = html.match(/data-entry-editable="true"/g) ?? [];
+    expect(editableMatches).toHaveLength(1);
+    expect(html).toMatch(/contenteditable="true"/i);
+    expect(html).toContain('data-role="entry-toolbar"');
+    expect(html).toContain('data-variant="editor-toolbar"');
+    expect(html).toContain(
+      "flex w-full items-center gap-1 rounded-sm border border-[color:var(--page-border)] bg-[color:var(--page-paper)] px-2 text-[11px] text-[color:var(--page-muted)] shadow-sm shadow-black/5 transition-all duration-150"
+    );
+    expect(html).toContain('data-control="entry-undo"');
+    expect(html).toContain('data-control="entry-restore"');
+    expect(html).toContain(">Undo<");
+    expect(html).toContain(">Restore<");
+    expect(html).toContain('data-entry-id="msg-1"');
+    expect(html).toContain(
+      "rounded-sm border border-transparent px-3 py-2 text-base leading-7 text-[color:var(--page-ink-strong)] transition-colors"
+    );
+  });
+
+  it("locks entry attachments against drag moves", () => {
+    const attachmentTarget = {
+      closest: (selector: string) =>
+        selector === '[data-entry-attachment-id]' ? {} : null,
+    };
+    const nonAttachmentTarget = {
+      closest: () => null,
+    };
+
+    expect(
+      isEntryAttachmentTarget(attachmentTarget as unknown as EventTarget)
+    ).toBe(true);
+    expect(
+      isEntryAttachmentTarget(nonAttachmentTarget as unknown as EventTarget)
+    ).toBe(false);
+    expect(isEntryAttachmentTarget(null)).toBe(false);
+  });
+
+  it("restores entry content from the active snapshot", () => {
+    const message = {
+      id: "msg-1",
+      role: "user",
+      content: "Saved entry",
+      createdAt: 1700000000000,
+    };
+    const snapshot = {
+      messageId: "msg-1",
+      content: "Original entry",
+      attachments: [],
+    };
+
+    expect(getEntryRestoreSnapshot(message, snapshot)).toEqual(snapshot);
+  });
+
+  it("falls back to message content when no restore snapshot exists", () => {
+    const message = {
+      id: "msg-2",
+      role: "user",
+      content: "Saved entry",
+      createdAt: 1700000000000,
+      attachments: [
+        {
+          id: "att-1",
+          name: "Image",
+          mimeType: "image/png",
+          dataUrl: "data:image/png;base64,abc",
+          position: 1,
+        },
+      ],
+    };
+
+    expect(getEntryRestoreSnapshot(message, null)).toEqual({
+      messageId: "msg-2",
+      content: "Saved entry",
+      attachments: [
+        {
+          id: "att-1",
+          name: "Image",
+          mimeType: "image/png",
+          dataUrl: "data:image/png;base64,abc",
+          position: 1,
+        },
+      ],
+    });
+  });
+
+  it("saves entries only after focus leaves the entry wrapper", () => {
+    const inside = {};
+    const outside = {};
+    const currentTarget = {
+      contains: (node: unknown) => node === inside,
+    };
+
+    expect(
+      shouldCommitEntryBlur(
+        currentTarget as unknown as HTMLElement,
+        inside as unknown as Node,
+        null
+      )
+    ).toBe(false);
+    expect(
+      shouldCommitEntryBlur(
+        currentTarget as unknown as HTMLElement,
+        null,
+        inside as unknown as Node
+      )
+    ).toBe(false);
+    expect(
+      shouldCommitEntryBlur(
+        currentTarget as unknown as HTMLElement,
+        null,
+        outside as unknown as Node
+      )
+    ).toBe(true);
   });
 
   it("adds a listen control to each entry on the home view", () => {
@@ -533,6 +858,7 @@ describe("ConversationPane", () => {
       createConversation: jest.fn().mockResolvedValue("conv-1"),
       openConversation: jest.fn().mockResolvedValue(undefined),
       appendMessage: jest.fn().mockResolvedValue("conv-1"),
+      updateMessage: jest.fn().mockResolvedValue(null),
       renameConversation: jest.fn().mockResolvedValue(undefined),
       pinConversation: jest.fn().mockResolvedValue(undefined),
       archiveConversation: jest.fn().mockResolvedValue(undefined),
@@ -565,6 +891,7 @@ describe("ConversationPane", () => {
       createConversation: jest.fn().mockResolvedValue("conv-1"),
       openConversation: jest.fn().mockResolvedValue(undefined),
       appendMessage: jest.fn().mockResolvedValue("conv-1"),
+      updateMessage: jest.fn().mockResolvedValue(null),
       renameConversation: jest.fn().mockResolvedValue(undefined),
       pinConversation: jest.fn().mockResolvedValue(undefined),
       archiveConversation: jest.fn().mockResolvedValue(undefined),
@@ -612,6 +939,7 @@ describe("ConversationPane", () => {
       createConversation: jest.fn().mockResolvedValue("conv-1"),
       openConversation: jest.fn().mockResolvedValue(undefined),
       appendMessage: jest.fn().mockResolvedValue("conv-1"),
+      updateMessage: jest.fn().mockResolvedValue(null),
       renameConversation: jest.fn().mockResolvedValue(undefined),
       pinConversation: jest.fn().mockResolvedValue(undefined),
       archiveConversation: jest.fn().mockResolvedValue(undefined),
@@ -651,6 +979,43 @@ describe("ConversationPane", () => {
     expect(matches).toHaveLength(2);
   });
 
+  it("adds paragraph indices for citation highlights", () => {
+    const html = renderToStaticMarkup(
+      <div>{renderMarkdown("First paragraph.\n\nSecond paragraph.")}</div>
+    );
+
+    const matches = html.match(/data-paragraph-index/g) ?? [];
+    expect(matches).toHaveLength(2);
+    expect(html).toContain('data-paragraph-index="0"');
+    expect(html).toContain('data-paragraph-index="1"');
+  });
+
+  it("parses intent citations into tokens", () => {
+    const tokens = parseIntentCitations("Stay calm. [1] Keep moving.", [
+      { id: "1", type: "sentence", sentenceIndex: 0 },
+    ]);
+
+    const citationTokens = tokens.filter((token) => token.type === "citation");
+    expect(citationTokens).toHaveLength(1);
+    expect(citationTokens[0]).toMatchObject({ id: "1" });
+  });
+
+  it("maps citation ids to highlight targets", () => {
+    const targets = getIntentCitationTargets(
+      [
+        { id: "1", type: "sentence", sentenceIndex: 2 },
+        { id: "2", type: "paragraph", paragraphIndex: 1 },
+        { id: "3", type: "attachment", attachmentId: "att-1" },
+      ],
+      "2"
+    );
+
+    expect(targets).not.toBeNull();
+    expect(targets?.paragraphIndices.has(1)).toBe(true);
+    expect(targets?.sentenceIndices.size).toBe(0);
+    expect(targets?.attachmentIds.size).toBe(0);
+  });
+
   it("renders plain text without markdown formatting", () => {
     const html = renderToStaticMarkup(
       <div>{renderPlainText("Line one\nLine two **bold**")}</div>
@@ -682,6 +1047,7 @@ describe("ConversationPane", () => {
       createConversation: jest.fn().mockResolvedValue("conv-1"),
       openConversation,
       appendMessage: jest.fn().mockResolvedValue("conv-1"),
+      updateMessage: jest.fn().mockResolvedValue(null),
       renameConversation: jest.fn().mockResolvedValue(undefined),
       pinConversation: jest.fn().mockResolvedValue(undefined),
       archiveConversation: jest.fn().mockResolvedValue(undefined),

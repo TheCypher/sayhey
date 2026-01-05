@@ -55,11 +55,18 @@ describe("HomeShell", () => {
     mockUseLocalConversations.mockReturnValue({
       conversations: [],
       activeConversationId: null,
+      messages: [],
       renameConversation: jest.fn(),
       pinConversation: jest.fn(),
       archiveConversation: jest.fn(),
       deleteConversation: jest.fn(),
       isLoading: false,
+      error: null,
+      createConversation: jest.fn().mockResolvedValue("conv-1"),
+      openConversation: jest.fn().mockResolvedValue(undefined),
+      appendMessage: jest.fn().mockResolvedValue("conv-1"),
+      updateMessage: jest.fn().mockResolvedValue(null),
+      refresh: jest.fn().mockResolvedValue(undefined),
     });
     mockUseResponsiveSidebar.mockReturnValue({
       isDesktop: true,

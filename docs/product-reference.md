@@ -1,5 +1,5 @@
 # Developer Reference: Voice-First Journal
-Version: 3.1
+Version: 3.2
 Status: Design Locked - Voice Journal MVP
 
 ## 1. Purpose of This Document
@@ -37,7 +37,7 @@ Violating these principles is a product bug.
 - Spacebar toggles start, pause, and resume when focus is not inside a text input.
 - Double-tap Spacebar stops capture; the mic button still stops and submits.
 - User taps the mic again to finish; audio is sent to STT.
-- Transcript appears as a single-paragraph journal entry.
+- Transcript appears as an inline-editable journal entry.
 - After transcription completes, the journal responds only if the transcript contains an explicit, direct command.
 - When a reply is requested, it renders as text and is spoken aloud.
 
@@ -52,6 +52,8 @@ Violating these principles is a product bug.
 - TTS failures fall back to text-only without blocking capture.
 - Users can stop playback; stopping clears the queue.
 - Each journal entry includes a Listen control at the bottom right; using it stops current audio and speaks that entry.
+- Each journal entry includes an Intent control at the bottom right; it returns a short, first-person interpretation of the entry's goal and motivation without advice, with citations that highlight the referenced entry sentence, paragraph, or attachment on hover or tap.
+- Intent summaries can be saved per entry to avoid regeneration; saved intents render inline with a delete control.
 
 ## 5. Architecture Overview
 The system is a three-hop pipeline:
@@ -81,6 +83,7 @@ The system is a three-hop pipeline:
 ## 6. Data Model
 - Conversation index items (id, title, preview, updatedAt, pinned, archived) are stored in IndexedDB for navigation.
 - Encrypted transcripts are stored separately from the index to keep listing fast.
+- Entry attachments (images) are stored inside encrypted transcripts with cursor offsets so they can be reinserted inline while text stays plain.
 - Field updates (when returned by the helper) may be persisted per the workflow.
 - Audio is ephemeral and never stored.
 
@@ -103,6 +106,7 @@ The system is a three-hop pipeline:
 ### 8.1 Mic States
 - `idle`, `recording`, `paused`, `processing`, `ready`, `error`.
 - Tapping the mic while recording stops capture and triggers transcription; there is no separate Send control.
+- The Talk button color maps to mic state: waiting (warm sand), listening (sunset ember), paused (amber), processing (clay); journal pages use the warm sunset palette while the homepage uses green brand accents for the same state mapping.
 
 ### 8.2 Audio Playback States
 - `idle`, `loading`, `playing`, `stopped`, `error`.
@@ -114,14 +118,18 @@ The system is a three-hop pipeline:
 - Voice transcripts are merged into a single paragraph before processing or playback.
 - The journal entries pane stays page-sized; the entry stream fills the remaining height and scrolls vertically so entries never resize the pane.
 - Entry and reply headers show the saved date and time.
-- Entry cards include a bottom-right Listen control that plays the entry aloud.
+- Entry cards include bottom-right Listen and Intent controls; Listen plays the entry aloud and Intent summarizes goal and motivation in the user's voice without advice.
+- Saved intent summaries remain visible on the entry until deleted by the user.
+- Intent summaries render inline citations that highlight the referenced sentence, paragraph, or attachment in the entry on hover or tap.
 - While audio plays or prepares the next sentence, the active sentence stays highlighted in the active entry or reply and advances as playback progresses; it clears when playback stops or errors.
 - Sentence highlighting uses native sentence segmentation when available and preserves sentence boundaries around closing quotes or brackets.
-- Journals render as a full-width white canvas with plain text blocks for entries (no card styling), a sticky full-width journal navbar with a desktop single row (sidebar toggle + JOURNAL left, centered mic/audio controls, user name + account menu right) that wraps the center controls onto a second row on smaller screens, plus a bottom text entry rail below the stream.
+- Journals render as a full-width white canvas with editable text blocks for entries (no card styling), a sticky full-width journal navbar with a desktop single row (sidebar toggle + JOURNAL left, centered mic/audio controls, user name + account menu right) that wraps the center controls onto a second row on smaller screens, plus a bottom text entry rail below the stream.
 - The journal footer divider aligns with the text entry rail width.
 - Audio queue labels and the Stop audio control appear only after audio playback has been activated at least once.
 - Replies render Markdown lists, code blocks, and inline emphasis (bold/italic/inline code).
 - Spoken audio strips saved-update blocks to stay concise.
+- User entries are inline-editable in place; focusing an entry reveals a compact editor-style toolbar with labeled Undo and Restore controls, and edits save locally on blur while keeping the same presentation (Restore returns the entry to its pre-edit text and attachments).
+- Drag-and-drop image attachments insert at the caret and render inline with the text; attachments stay locked in place during editing and metadata stores cursor offsets to rehydrate placement.
 
 ### 8.4 Text Entry Visibility
 - The text composer is collapsed by default.
@@ -175,6 +183,7 @@ The system is a three-hop pipeline:
 - The `/journals/new` workspace does not create a conversation until the first entry is saved.
 - New entries started from `/journals/new` always create a fresh conversation; entries append only when the user is already on that journal's `/journals/:id`.
 - The homepage includes a visible listening control with animated rings that reflect mic state.
+- The homepage Talk control uses green accent tones for waiting, listening, paused, and processing, with the rings keyed to the same state colors.
 - The homepage shows a full-width streaming orbit text accent anchored to the hero on larger screens, scaled for readability with randomized start/direction/paths and a faster flow.
 - A sidebar toggle shortcut appears in the homepage header and opens/closes the journal history rail in place.
 - Pressing Space on the homepage starts the first voice capture; double-tap Space stops it, and once transcription begins the app routes to `/journals/new`.
@@ -213,5 +222,5 @@ Optional:
 - Passphrase-protected encryption (Tier 2).
 - Encrypted index fields (title/preview).
 - Full-text search across transcripts.
-- Rich text composer features (attachments, formatting controls).
+- Rich text formatting toolbars beyond Undo/Restore and inline image attachments.
 - Complex NLP-based intent detection.

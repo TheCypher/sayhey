@@ -12,6 +12,7 @@ Hey is a privacy-first, voice-led journal that stays quiet unless you ask for a 
 - Push-to-talk recording with spacebar start/pause/resume and double-tap stop.
 - STT via Groq Whisper proxy; TTS via ElevenLabs proxy.
 - Spoken reply playback queue with sentence-level highlighting.
+- Editable journal entries with local image attachments.
 - Local-first conversation history in IndexedDB with AES-GCM encrypted transcripts.
 - Unique per-journal URLs at `/journals/:id` with a new-journal launcher at `/journals/new`.
 - Magic-link authentication with Mailtrap email delivery and HttpOnly session cookies.

@@ -19,6 +19,12 @@ export type LocalConversationState = {
   createConversation: () => Promise<string | null>;
   openConversation: (conversationId: string) => Promise<void>;
   appendMessage: (message: Message) => Promise<string | null>;
+  updateMessage: (
+    messageId: string,
+    updates: Partial<
+      Pick<Message, "content" | "attachments" | "intent" | "intentSources">
+    >
+  ) => Promise<Message | null>;
   renameConversation: (conversationId: string, title: string) => Promise<void>;
   pinConversation: (conversationId: string, pinned: boolean) => Promise<void>;
   archiveConversation: (conversationId: string, archived: boolean) => Promise<void>;
@@ -260,6 +266,38 @@ export const useLocalConversations = (
     [activeConversationId, refresh, service]
   );
 
+  const updateMessage = useCallback(
+    async (
+      messageId: string,
+      updates: Partial<Pick<Message, "content" | "attachments" | "intent">>
+    ) => {
+      if (!service || !activeConversationId) {
+        return null;
+      }
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.id === messageId ? { ...message, ...updates } : message
+        )
+      );
+      try {
+        const updated = await service.updateMessage(
+          activeConversationId,
+          messageId,
+          updates
+        );
+        await refresh();
+        return updated;
+      } catch (caught) {
+        setError(
+          caught instanceof Error ? caught.message : "Unable to update message."
+        );
+        await loadTranscript(activeConversationId);
+        return null;
+      }
+    },
+    [activeConversationId, loadTranscript, refresh, service]
+  );
+
   const renameConversation = useCallback(
     async (conversationId: string, title: string) => {
       if (!service) {
@@ -323,6 +361,7 @@ export const useLocalConversations = (
     createConversation,
     openConversation,
     appendMessage,
+    updateMessage,
     renameConversation,
     pinConversation,
     archiveConversation,

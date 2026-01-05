@@ -30,6 +30,10 @@ const isDefaultTitle = (title?: string | null) => {
   return !trimmed || trimmed === DEFAULT_TITLE;
 };
 
+type MessageUpdate = Partial<
+  Pick<Message, "content" | "attachments" | "intent" | "intentSources">
+>;
+
 export const createConversationService = (options: {
   store: ConversationStore;
   getKey: () => Promise<CryptoKey>;
@@ -129,6 +133,68 @@ export const createConversationService = (options: {
     return targetId;
   };
 
+  const updateMessage = async (
+    conversationId: string,
+    messageId: string,
+    updates: MessageUpdate
+  ) => {
+    const existingTranscript = await loadConversation(conversationId);
+    if (!existingTranscript) {
+      return null;
+    }
+
+    const messageIndex = existingTranscript.messages.findIndex(
+      (message) => message.id === messageId
+    );
+    if (messageIndex === -1) {
+      return null;
+    }
+
+    const updatedMessage: Message = {
+      ...existingTranscript.messages[messageIndex],
+      ...updates,
+    };
+    const nextMessages = [...existingTranscript.messages];
+    nextMessages[messageIndex] = updatedMessage;
+
+    const transcript: Transcript = {
+      ...existingTranscript,
+      messages: nextMessages,
+    };
+
+    const key = await options.getKey();
+    const payload = await encryptTranscript(transcript, {
+      conversationId,
+      key,
+      now,
+    });
+    await options.store.saveTranscript({ conversationId, payload });
+
+    const existingIndex = await options.store.getConversation(conversationId);
+    if (existingIndex) {
+      const isFirstMessage = messageIndex === 0;
+      const nextPreview = isFirstMessage
+        ? buildPreview(updatedMessage)
+        : existingIndex.preview;
+      const shouldUpdateTitle =
+        isFirstMessage &&
+        (isDefaultTitle(existingIndex.title) ||
+          existingIndex.title === existingIndex.preview);
+      const nextTitle = shouldUpdateTitle
+        ? nextPreview || DEFAULT_TITLE
+        : existingIndex.title;
+      const updatedIndex: ConversationIndexItem = {
+        ...existingIndex,
+        preview: nextPreview,
+        title: nextTitle,
+        updatedAt: now(),
+      };
+      await options.store.saveConversation(updatedIndex);
+    }
+
+    return updatedMessage;
+  };
+
   const ensurePreviewFromTranscript = async (conversationId: string) => {
     const existingIndex = await options.store.getConversation(conversationId);
     if (!existingIndex) {
@@ -198,6 +264,7 @@ export const createConversationService = (options: {
     listConversations,
     loadConversation,
     appendMessage,
+    updateMessage,
     ensurePreviewFromTranscript,
     renameConversation,
     pinConversation,

@@ -5,12 +5,24 @@ export type AttachmentMeta = {
   name: string;
   mimeType: string;
   size?: number;
+  dataUrl?: string;
+  position?: number;
+};
+
+export type IntentSource = {
+  id: string;
+  type: "sentence" | "paragraph" | "attachment";
+  sentenceIndex?: number;
+  paragraphIndex?: number;
+  attachmentId?: string;
 };
 
 export type Message = {
   id: string;
   role: MessageRole;
   content: string;
+  intent?: string | null;
+  intentSources?: IntentSource[];
   createdAt: number;
   attachments?: AttachmentMeta[];
   tokens?: number;

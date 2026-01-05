@@ -16,6 +16,8 @@ import {
   MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
+  RotateCcw,
+  RotateCw,
   User,
 } from "lucide-react";
 
@@ -32,11 +34,32 @@ import {
   consumePendingTranscript,
   type PendingTranscript,
 } from "@/lib/pending-transcript";
-import type { Message as StoredMessage } from "@/lib/storage/types";
+import type { IntentSource, Message as StoredMessage } from "@/lib/storage/types";
 import { cn } from "@/lib/utils";
 
 type MessageRole = StoredMessage["role"];
 type Message = StoredMessage;
+type MessageAttachment = NonNullable<Message["attachments"]>[number];
+type IntentSourceInput = {
+  id: string;
+  type: IntentSource["type"];
+  text: string;
+};
+
+type IntentCitationToken =
+  | { type: "text"; content: string }
+  | { type: "citation"; id: string };
+
+type IntentCitationTargets = {
+  sentenceIndices: Set<number>;
+  paragraphIndices: Set<number>;
+  attachmentIds: Set<string>;
+};
+
+type IntentCitationState = {
+  messageId: string;
+  citationId: string;
+};
 
 type ConversationHistoryItem = {
   role: MessageRole;
@@ -57,6 +80,14 @@ type TextEntryIntent = {
 };
 
 type MicState = "idle" | "recording" | "processing" | "ready" | "error" | "paused";
+type TalkTone = "waiting" | "listening" | "paused" | "processing";
+
+type EntryIntentState = {
+  status: "loading" | "ready" | "error";
+  text?: string;
+  sources?: IntentSource[];
+  error?: string;
+};
 
 type InlineToken = {
   type: "text" | "strong" | "em" | "code";
@@ -75,9 +106,16 @@ type SentencePlaybackMeta = {
   sentenceIndex: number;
 };
 
+type EntrySnapshot = {
+  messageId: string;
+  content: string;
+  attachments: MessageAttachment[];
+};
+
 type SpacebarShortcutTarget = EventTarget | {
   tagName?: string;
   isContentEditable?: boolean;
+  dataset?: { entryEditable?: string };
   closest?: (selector: string) => Element | null;
 };
 
@@ -121,7 +159,33 @@ const MIC_STATUS_COPY: Record<
   },
 };
 
+const getTalkTone = (state: MicState): TalkTone => {
+  switch (state) {
+    case "recording":
+      return "listening";
+    case "paused":
+      return "paused";
+    case "processing":
+    case "ready":
+      return "processing";
+    default:
+      return "waiting";
+  }
+};
+
+const TALK_TONE_CLASSES: Record<TalkTone, string> = {
+  waiting:
+    "border-[color:var(--talk-waiting-border)] bg-[color:var(--talk-waiting-bg)] text-[color:var(--talk-waiting-fg)] hover:bg-[color:var(--talk-waiting-hover)]",
+  listening:
+    "border-transparent bg-[color:var(--talk-listening-bg)] text-[color:var(--talk-listening-fg)] hover:bg-[color:var(--talk-listening-hover)]",
+  paused:
+    "border-[color:var(--talk-paused-border)] bg-[color:var(--talk-paused-bg)] text-[color:var(--talk-paused-fg)] hover:bg-[color:var(--talk-paused-hover)]",
+  processing:
+    "border-transparent bg-[color:var(--talk-processing-bg)] text-[color:var(--talk-processing-fg)]",
+};
+
 const TEXT_ENTRY_NOTICE = "Use a direct command if you want a reply.";
+const INTENT_ERROR_MESSAGE = "Unable to summarize intent. Try again.";
 
 const COMPOSER_PANEL_ID = "journal-composer-panel";
 const ACCOUNT_MENU_ID = "journal-account-menu";
@@ -141,6 +205,10 @@ const isEditableTarget = (target: SpacebarShortcutTarget | null | undefined) => 
     return true;
   }
 
+  if (element.dataset?.entryEditable === "true") {
+    return true;
+  }
+
   const tagName =
     typeof element.tagName === "string" ? element.tagName.toLowerCase() : "";
   if (tagName === "textarea" || tagName === "input" || tagName === "select") {
@@ -149,7 +217,7 @@ const isEditableTarget = (target: SpacebarShortcutTarget | null | undefined) => 
 
   if (typeof element.closest === "function") {
     const editableParent = element.closest(
-      'textarea, input, select, [contenteditable="true"], [contenteditable=""]'
+      'textarea, input, select, [contenteditable="true"], [contenteditable=""], [data-entry-editable="true"]'
     );
     if (editableParent) {
       return true;
@@ -251,11 +319,384 @@ export const shouldStopOnSpacebarDoubleTap = (
   return status === "recording" || status === "paused";
 };
 
+export const shouldCommitEntryBlur = (
+  currentTarget: HTMLElement,
+  relatedTarget: Node | null,
+  activeElement: Node | null
+) => {
+  if (relatedTarget && currentTarget.contains(relatedTarget)) {
+    return false;
+  }
+  if (activeElement && currentTarget.contains(activeElement)) {
+    return false;
+  }
+  return true;
+};
+
 const createId = () => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
   }
   return `msg-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
+const ENTRY_ATTACHMENT_ID_ATTR = "data-entry-attachment-id";
+const ENTRY_IMAGE_WRAPPER_CLASS =
+  "relative inline-flex max-w-full align-middle";
+const ENTRY_IMAGE_CLASS =
+  "max-h-52 max-w-[320px] rounded-xl border border-[color:var(--page-border)] object-cover select-none";
+
+export const isEntryAttachmentTarget = (
+  target: EventTarget | null | undefined
+) => {
+  if (!target) {
+    return false;
+  }
+  const element = target as {
+    closest?: (selector: string) => Element | null;
+  };
+  if (typeof element.closest !== "function") {
+    return false;
+  }
+  return Boolean(element.closest(`[${ENTRY_ATTACHMENT_ID_ATTR}]`));
+};
+
+const buildEntrySnapshot = (message: Message): EntrySnapshot => ({
+  messageId: message.id,
+  content: message.content,
+  attachments: (message.attachments ?? []).map((attachment) => ({
+    ...attachment,
+  })),
+});
+
+export const getEntryRestoreSnapshot = (
+  message: Message,
+  snapshot: EntrySnapshot | null
+): EntrySnapshot => {
+  if (snapshot && snapshot.messageId === message.id) {
+    return snapshot;
+  }
+  return buildEntrySnapshot(message);
+};
+
+const createAttachmentId = () => {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `att-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
+const normalizeLineBreaks = (value: string) =>
+  value.replace(/\r\n/g, "\n").replace(/\u00a0/g, " ");
+
+const readFileAsDataUrl = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () =>
+      reject(reader.error ?? new Error("Unable to read file."));
+    reader.readAsDataURL(file);
+  });
+
+const buildImageAttachment = async (file: File): Promise<MessageAttachment> => {
+  const dataUrl = await readFileAsDataUrl(file);
+  return {
+    id: createAttachmentId(),
+    name: file.name || "Image",
+    mimeType: file.type || "image/*",
+    size: file.size,
+    dataUrl,
+  };
+};
+
+const getInlineAttachments = (attachments?: MessageAttachment[]) =>
+  (attachments ?? []).filter(
+    (attachment) =>
+      attachment.mimeType.startsWith("image/") && Boolean(attachment.dataUrl)
+  );
+
+const clampAttachmentPosition = (position: number, textLength: number) =>
+  Math.min(Math.max(position, 0), textLength);
+
+const sortAttachmentsForEntry = (
+  text: string,
+  attachments: MessageAttachment[]
+) => {
+  const length = text.length;
+  return attachments
+    .map((attachment) => ({
+      ...attachment,
+      position: clampAttachmentPosition(
+        attachment.position ?? length,
+        length
+      ),
+    }))
+    .sort(
+      (left, right) =>
+        (left.position ?? 0) - (right.position ?? 0)
+    );
+};
+
+const areAttachmentsEqual = (
+  left: MessageAttachment[],
+  right: MessageAttachment[]
+) => {
+  if (left.length !== right.length) {
+    return false;
+  }
+  return left.every((item, index) => {
+    const other = right[index];
+    return (
+      item.id === other.id &&
+      item.name === other.name &&
+      item.mimeType === other.mimeType &&
+      item.size === other.size &&
+      item.dataUrl === other.dataUrl &&
+      item.position === other.position
+    );
+  });
+};
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+const escapeAttribute = (value: string) =>
+  escapeHtml(value).replace(/"/g, "&quot;");
+
+const ENTRY_SENTENCE_CLASS = "transition-colors duration-150";
+const ENTRY_SENTENCE_ACTIVE_CLASS =
+  "rounded-sm bg-[color:var(--page-accent)]/25";
+const ENTRY_SENTENCE_CITATION_CLASS =
+  "rounded-sm bg-[color:var(--page-accent-strong)]/20 ring-1 ring-[color:var(--page-accent-strong)]/35";
+const ENTRY_ATTACHMENT_CITATION_CLASS =
+  "ring-2 ring-[color:var(--page-accent-strong)]/30";
+const INTENT_CITATION_PATTERN = /\[(\d+)\]/g;
+const INTENT_CITATION_CLASS =
+  "mx-1 h-6 inline-flex items-center rounded-full border border-[color:var(--page-border)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:var(--page-muted)] transition-colors hover:border-[color:var(--page-accent)] hover:text-[color:var(--page-ink-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--page-accent-strong)]/40";
+const INTENT_CITATION_ACTIVE_CLASS =
+  "border-[color:var(--page-accent-strong)] bg-[color:var(--page-accent)]/25 text-[color:var(--page-ink-strong)]";
+
+type ParagraphRange = {
+  index: number;
+  start: number;
+  end: number;
+  text: string;
+};
+
+const buildParagraphRanges = (text: string): ParagraphRange[] => {
+  if (!text) {
+    return [];
+  }
+  const ranges: ParagraphRange[] = [];
+  const pattern = /\n{2,}/g;
+  let start = 0;
+  let index = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(text)) !== null) {
+    const end = match.index;
+    const slice = text.slice(start, end);
+    if (slice.trim()) {
+      ranges.push({ index, start, end, text: slice });
+      index += 1;
+    }
+    start = match.index + match[0].length;
+  }
+
+  const tail = text.slice(start);
+  if (tail.trim()) {
+    ranges.push({ index, start, end: text.length, text: tail });
+  }
+
+  return ranges;
+};
+
+const getParagraphIndexForOffset = (
+  ranges: ParagraphRange[],
+  offset: number
+) => {
+  for (const range of ranges) {
+    if (offset >= range.start && offset < range.end) {
+      return range.index;
+    }
+  }
+  return null;
+};
+
+const buildSentenceRanges = (
+  text: string,
+  paragraphRanges: ParagraphRange[] = []
+) => {
+  const ranges: Array<{
+    index: number;
+    start: number;
+    end: number;
+    paragraphIndex: number | null;
+  }> = [];
+  let offset = 0;
+  splitIntoSentences(text).forEach((sentence, index) => {
+    const start = offset;
+    const end = offset + sentence.length;
+    const paragraphIndex =
+      paragraphRanges.length > 0
+        ? getParagraphIndexForOffset(paragraphRanges, start)
+        : null;
+    ranges.push({ index, start, end, paragraphIndex });
+    offset = end;
+  });
+  return ranges;
+};
+
+type EntryRenderOptions = {
+  activeSentenceIndex?: number | null;
+  citationTargets?: IntentCitationTargets | null;
+};
+
+const buildEntryHtml = (
+  text: string,
+  attachments: MessageAttachment[],
+  options: EntryRenderOptions = {}
+) => {
+  const sorted = sortAttachmentsForEntry(text, attachments);
+  const paragraphRanges = buildParagraphRanges(text);
+  const sentenceRanges = buildSentenceRanges(text, paragraphRanges);
+  const activeSentenceIndex =
+    typeof options.activeSentenceIndex === "number"
+      ? options.activeSentenceIndex
+      : null;
+  const citationTargets = options.citationTargets ?? null;
+  let cursor = 0;
+  let html = "";
+
+  const appendTextSlice = (sliceStart: number, sliceEnd: number) => {
+    if (sliceEnd <= sliceStart) {
+      return;
+    }
+    if (sentenceRanges.length === 0) {
+      html += escapeHtml(text.slice(sliceStart, sliceEnd));
+      return;
+    }
+
+    sentenceRanges.forEach((range) => {
+      if (range.end <= sliceStart || range.start >= sliceEnd) {
+        return;
+      }
+      const overlapStart = Math.max(range.start, sliceStart);
+      const overlapEnd = Math.min(range.end, sliceEnd);
+      if (overlapEnd <= overlapStart) {
+        return;
+      }
+      const slice = text.slice(overlapStart, overlapEnd);
+      const isActive = activeSentenceIndex === range.index;
+      const paragraphIndex = range.paragraphIndex;
+      const isCitationActive =
+        (citationTargets?.sentenceIndices.has(range.index) ?? false) ||
+        (paragraphIndex !== null &&
+          (citationTargets?.paragraphIndices.has(paragraphIndex) ?? false));
+      const className = [
+        ENTRY_SENTENCE_CLASS,
+        isActive ? ENTRY_SENTENCE_ACTIVE_CLASS : "",
+        isCitationActive ? ENTRY_SENTENCE_CITATION_CLASS : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      const paragraphAttr =
+        typeof paragraphIndex === "number"
+          ? ` data-paragraph-index="${paragraphIndex}"`
+          : "";
+      html += `<span data-sentence-index="${range.index}"${paragraphAttr} data-sentence-state="${
+        isActive ? "active" : "idle"
+      }" class="${className}">`;
+      html += escapeHtml(slice);
+      html += "</span>";
+    });
+  };
+
+  sorted.forEach((attachment) => {
+    const position = attachment.position ?? text.length;
+    appendTextSlice(cursor, position);
+    const isAttachmentHighlighted =
+      citationTargets?.attachmentIds.has(attachment.id) ?? false;
+    const attachmentClass = [
+      ENTRY_IMAGE_WRAPPER_CLASS,
+      isAttachmentHighlighted ? ENTRY_ATTACHMENT_CITATION_CLASS : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+    html += `<span ${ENTRY_ATTACHMENT_ID_ATTR}="${escapeAttribute(
+      attachment.id
+    )}" class="${attachmentClass}" contenteditable="false" draggable="false">`;
+    html += `<img src="${escapeAttribute(
+      attachment.dataUrl ?? ""
+    )}" alt="${escapeAttribute(
+      attachment.name || "Entry image"
+    )}" class="${ENTRY_IMAGE_CLASS}" draggable="false" style="-webkit-user-drag: none;" />`;
+    html += "</span>";
+    cursor = position;
+  });
+
+  appendTextSlice(cursor, text.length);
+
+  return html;
+};
+
+const createAttachmentElement = (
+  doc: Document,
+  attachment: MessageAttachment
+) => {
+  const wrapper = doc.createElement("span");
+  wrapper.setAttribute(ENTRY_ATTACHMENT_ID_ATTR, attachment.id);
+  wrapper.className = ENTRY_IMAGE_WRAPPER_CLASS;
+  wrapper.setAttribute("contenteditable", "false");
+  wrapper.setAttribute("draggable", "false");
+
+  const img = doc.createElement("img");
+  img.src = attachment.dataUrl ?? "";
+  img.alt = attachment.name || "Entry image";
+  img.className = ENTRY_IMAGE_CLASS;
+  img.draggable = false;
+  img.setAttribute("draggable", "false");
+  img.style.setProperty("-webkit-user-drag", "none");
+
+  wrapper.appendChild(img);
+  return wrapper;
+};
+
+const extractEntryState = (
+  container: HTMLElement,
+  attachmentMap: Map<string, MessageAttachment>
+) => {
+  const text = normalizeLineBreaks(container.innerText || "");
+  const elements = Array.from(
+    container.querySelectorAll(`[${ENTRY_ATTACHMENT_ID_ATTR}]`)
+  );
+  const attachments: MessageAttachment[] = [];
+
+  elements.forEach((element) => {
+    const id = element.getAttribute(ENTRY_ATTACHMENT_ID_ATTR);
+    if (!id) {
+      return;
+    }
+    const meta = attachmentMap.get(id);
+    if (!meta) {
+      return;
+    }
+    const range = container.ownerDocument.createRange();
+    range.setStart(container, 0);
+    range.setEndBefore(element);
+    const position = normalizeLineBreaks(range.toString()).length;
+    attachments.push({ ...meta, position });
+  });
+
+  attachments.sort(
+    (left, right) =>
+      (left.position ?? 0) - (right.position ?? 0)
+  );
+
+  return { text, attachments };
 };
 
 export const buildConversationHistory = (
@@ -452,6 +893,68 @@ const buildSentenceSegments = (text: string): SentenceSegment[] => {
   return segments;
 };
 
+const buildPlainSentenceSegments = (text: string): SentenceSegment[] => {
+  const segments: SentenceSegment[] = [];
+  let index = 0;
+  splitIntoSentences(text).forEach((sentence) => {
+    const trimmed = sentence.trim();
+    if (!trimmed) {
+      return;
+    }
+    segments.push({
+      index,
+      displayText: sentence,
+      speechText: trimmed,
+      isSpeakable: true,
+    });
+    index += 1;
+  });
+  return segments;
+};
+
+const buildIntentSources = (
+  text: string,
+  attachments: MessageAttachment[]
+) => {
+  const inputs: IntentSourceInput[] = [];
+  const intentSources: IntentSource[] = [];
+  let idCounter = 1;
+
+  splitIntoSentences(text).forEach((sentence, sentenceIndex) => {
+    const trimmed = sentence.trim();
+    if (!trimmed) {
+      return;
+    }
+    const id = String(idCounter++);
+    inputs.push({ id, type: "sentence", text: trimmed });
+    intentSources.push({ id, type: "sentence", sentenceIndex });
+  });
+
+  const paragraphRanges = buildParagraphRanges(text);
+  paragraphRanges.forEach((paragraph) => {
+    const trimmed = paragraph.text.trim();
+    if (!trimmed) {
+      return;
+    }
+    const id = String(idCounter++);
+    inputs.push({ id, type: "paragraph", text: trimmed });
+    intentSources.push({
+      id,
+      type: "paragraph",
+      paragraphIndex: paragraph.index,
+    });
+  });
+
+  getInlineAttachments(attachments).forEach((attachment) => {
+    const label = attachment.name || "Image";
+    const id = String(idCounter++);
+    inputs.push({ id, type: "attachment", text: label });
+    intentSources.push({ id, type: "attachment", attachmentId: attachment.id });
+  });
+
+  return { inputs, intentSources };
+};
+
 const renderInlineMarkdown = (text: string) =>
   parseInlineMarkdown(text).map((token, index) => {
     if (token.type === "strong") {
@@ -496,6 +999,152 @@ export const renderPlainText = (text: string) => {
   ));
 };
 
+export const parseIntentCitations = (
+  text: string,
+  sources: IntentSource[] = []
+): IntentCitationToken[] => {
+  if (!text) {
+    return [];
+  }
+  const knownIds = new Set(sources.map((source) => source.id));
+  const tokens: IntentCitationToken[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  INTENT_CITATION_PATTERN.lastIndex = 0;
+  while ((match = INTENT_CITATION_PATTERN.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      tokens.push({
+        type: "text",
+        content: text.slice(lastIndex, match.index),
+      });
+    }
+    const id = match[1];
+    if (knownIds.has(id)) {
+      tokens.push({ type: "citation", id });
+    } else {
+      tokens.push({ type: "text", content: match[0] });
+    }
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    tokens.push({ type: "text", content: text.slice(lastIndex) });
+  }
+
+  if (tokens.length === 0) {
+    tokens.push({ type: "text", content: text });
+  }
+
+  return tokens;
+};
+
+export const getIntentCitationTargets = (
+  sources: IntentSource[] = [],
+  citationId?: string | null
+): IntentCitationTargets | null => {
+  if (!citationId) {
+    return null;
+  }
+  const source = sources.find((item) => item.id === citationId);
+  if (!source) {
+    return null;
+  }
+
+  const targets: IntentCitationTargets = {
+    sentenceIndices: new Set(),
+    paragraphIndices: new Set(),
+    attachmentIds: new Set(),
+  };
+
+  if (source.type === "sentence" && typeof source.sentenceIndex === "number") {
+    targets.sentenceIndices.add(source.sentenceIndex);
+    return targets;
+  }
+  if (
+    source.type === "paragraph" &&
+    typeof source.paragraphIndex === "number"
+  ) {
+    targets.paragraphIndices.add(source.paragraphIndex);
+    return targets;
+  }
+  if (source.type === "attachment" && source.attachmentId) {
+    targets.attachmentIds.add(source.attachmentId);
+    return targets;
+  }
+
+  return null;
+};
+
+type RenderIntentTextOptions = {
+  sources?: IntentSource[];
+  activeCitationId?: string | null;
+  lockedCitationId?: string | null;
+  onCitationEnter?: (citationId: string) => void;
+  onCitationLeave?: (citationId: string) => void;
+  onCitationClick?: (citationId: string) => void;
+};
+
+const renderIntentText = (
+  text: string,
+  options: RenderIntentTextOptions = {}
+) => {
+  const lines = text.split(/\r?\n+/).filter((line) => line.length > 0);
+  if (lines.length === 0) {
+    return null;
+  }
+  const {
+    sources = [],
+    activeCitationId = null,
+    lockedCitationId = null,
+    onCitationEnter,
+    onCitationLeave,
+    onCitationClick,
+  } = options;
+
+  return lines.map((line, lineIndex) => {
+    const tokens = parseIntentCitations(line, sources);
+    return (
+      <p key={`intent-${lineIndex}`} className="leading-relaxed">
+        {tokens.map((token, tokenIndex) => {
+          if (token.type !== "citation") {
+            return (
+              <span key={`intent-text-${lineIndex}-${tokenIndex}`}>
+                {token.content}
+              </span>
+            );
+          }
+          const isActive = activeCitationId === token.id;
+          const isLocked = lockedCitationId === token.id;
+          return (
+            <Button
+              key={`intent-citation-${lineIndex}-${tokenIndex}`}
+              type="button"
+              variant="ghost"
+              size="sm"
+              data-intent-citation="true"
+              data-citation-id={token.id}
+              className={cn(
+                INTENT_CITATION_CLASS,
+                (isActive || isLocked) && INTENT_CITATION_ACTIVE_CLASS
+              )}
+              onMouseEnter={() => onCitationEnter?.(token.id)}
+              onMouseLeave={() => onCitationLeave?.(token.id)}
+              onFocus={() => onCitationEnter?.(token.id)}
+              onBlur={() => onCitationLeave?.(token.id)}
+              onClick={() => onCitationClick?.(token.id)}
+              aria-pressed={isLocked || undefined}
+              aria-label={`Highlight source ${token.id}`}
+            >
+              [{token.id}]
+            </Button>
+          );
+        })}
+      </p>
+    );
+  });
+};
+
 type RenderMarkdownOptions = {
   activeSentenceIndex?: number | null;
 };
@@ -506,6 +1155,7 @@ export const renderMarkdown = (
 ) => {
   const blocks = parseMarkdownBlocks(text);
   let sentenceIndex = 0;
+  let paragraphIndex = 0;
 
   const renderSentences = (content: string) =>
     splitIntoSentences(content).map((sentence) => {
@@ -559,8 +1209,14 @@ export const renderMarkdown = (
         </ul>
       );
     }
+    const currentParagraphIndex = paragraphIndex;
+    paragraphIndex += 1;
     return (
-      <p key={`paragraph-${index}`} className="leading-relaxed">
+      <p
+        key={`paragraph-${index}`}
+        data-paragraph-index={currentParagraphIndex}
+        className="leading-relaxed"
+      >
         {renderSentences(block.content)}
       </p>
     );
@@ -602,9 +1258,13 @@ export const stripSavedUpdatesForTts = (text: string) => {
 
 const buildTtsQueueItems = (
   messageId: string,
-  content: string
+  content: string,
+  options: { useMarkdown?: boolean } = {}
 ): TtsPlaybackItem[] => {
-  const segments = buildSentenceSegments(content);
+  const useMarkdown = options.useMarkdown !== false;
+  const segments = useMarkdown
+    ? buildSentenceSegments(content)
+    : buildPlainSentenceSegments(content);
   return segments
     .filter((segment) => segment.isSpeakable)
     .map((segment) => ({
@@ -666,6 +1326,7 @@ export function ConversationPane({
     error: historyError,
     openConversation,
     appendMessage,
+    updateMessage,
     renameConversation,
     pinConversation,
     archiveConversation,
@@ -676,8 +1337,16 @@ export function ConversationPane({
   const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
   const [isComposerVisible, setIsComposerVisible] = useState(false);
   const [isFooterVisible, setIsFooterVisible] = useState(true);
+  const [entryIntents, setEntryIntents] = useState<
+    Record<string, EntryIntentState>
+  >({});
+  const [intentCitationHover, setIntentCitationHover] =
+    useState<IntentCitationState | null>(null);
+  const [intentCitationLock, setIntentCitationLock] =
+    useState<IntentCitationState | null>(null);
   const [pendingTranscript, setPendingTranscript] =
     useState<PendingTranscript | null>(null);
   const [isPendingSave, setIsPendingSave] = useState(false);
@@ -689,6 +1358,12 @@ export function ConversationPane({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const streamRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
+  const entryRefMap = useRef<Map<string, HTMLDivElement>>(new Map());
+  const entrySnapshotRef = useRef<EntrySnapshot | null>(null);
+  const entryAttachmentMapRef = useRef<
+    Map<string, Map<string, MessageAttachment>>
+  >(new Map());
+  const entryToolbarPointerDownRef = useRef(false);
   const messagesRef = useRef<Message[]>([]);
   const lastSpacebarTapRef = useRef<number | null>(null);
   const lastScrollTopRef = useRef(0);
@@ -703,6 +1378,7 @@ export function ConversationPane({
   const userLabel = greetingName || greetingEmail;
   const hasIdentity = Boolean(userLabel);
   const greetingInitials = getInitials(userLabel || "User");
+  const activeIntentCitation = intentCitationHover ?? intentCitationLock;
 
   const filteredConversations = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -958,8 +1634,12 @@ export function ConversationPane({
   ]);
 
   const enqueueMessagePlayback = useCallback(
-    (messageId: string, content: string) => {
-      const items = buildTtsQueueItems(messageId, content);
+    (
+      messageId: string,
+      content: string,
+      options: { useMarkdown?: boolean } = {}
+    ) => {
+      const items = buildTtsQueueItems(messageId, content, options);
       items.forEach((item) => enqueueTts(item));
     },
     [enqueueTts]
@@ -1169,6 +1849,7 @@ export function ConversationPane({
   const micCopy = MIC_STATUS_COPY[micState] ?? MIC_STATUS_COPY.idle;
   const micButtonLabel =
     micState === "recording" || micState === "paused" ? "Stop" : "Talk";
+  const talkTone = getTalkTone(micState);
 
   const handleComposerToggle = () => {
     setIsComposerVisible((prev) => !prev);
@@ -1243,11 +1924,459 @@ export function ConversationPane({
   };
 
   const handleEntryPlayback = useCallback(
-    (messageId: string, content: string) => {
+    (message: Message) => {
       clearTts();
-      enqueueMessagePlayback(messageId, content);
+      enqueueMessagePlayback(message.id, message.content, {
+        useMarkdown: message.role !== "user",
+      });
     },
     [clearTts, enqueueMessagePlayback]
+  );
+
+  const handleCitationEnter = useCallback(
+    (messageId: string, citationId: string) => {
+      setIntentCitationHover({ messageId, citationId });
+    },
+    []
+  );
+
+  const handleCitationLeave = useCallback(
+    (messageId: string, citationId: string) => {
+      setIntentCitationHover((prev) => {
+        if (!prev) {
+          return prev;
+        }
+        if (prev.messageId !== messageId || prev.citationId !== citationId) {
+          return prev;
+        }
+        return null;
+      });
+    },
+    []
+  );
+
+  const handleCitationClick = useCallback(
+    (messageId: string, citationId: string) => {
+      setIntentCitationLock((prev) => {
+        if (
+          prev &&
+          prev.messageId === messageId &&
+          prev.citationId === citationId
+        ) {
+          return null;
+        }
+        return { messageId, citationId };
+      });
+    },
+    []
+  );
+
+  const handleEntryIntent = useCallback(
+    async (message: Message) => {
+      const messageId = message.id;
+      const savedText =
+        typeof message.intent === "string" ? message.intent.trim() : "";
+      if (savedText) {
+        return;
+      }
+
+      const trimmed = message.content.trim();
+      const current = entryIntents[messageId];
+      if (current?.status === "loading") {
+        return;
+      }
+      if (!trimmed) {
+        setEntryIntents((prev) => ({
+          ...prev,
+          [messageId]: { status: "error", error: INTENT_ERROR_MESSAGE },
+        }));
+        return;
+      }
+
+      const { inputs, intentSources } = buildIntentSources(
+        trimmed,
+        message.attachments ?? []
+      );
+
+      setEntryIntents((prev) => ({
+        ...prev,
+        [messageId]: { status: "loading" },
+      }));
+
+      try {
+        const response = await fetch("/api/intent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ entry: trimmed, sources: inputs }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Intent request failed");
+        }
+
+        const data = (await response.json()) as { intent?: string };
+        const intent =
+          typeof data.intent === "string" ? data.intent.trim() : "";
+
+        if (!intent) {
+          throw new Error("Intent response empty");
+        }
+
+        setEntryIntents((prev) => ({
+          ...prev,
+          [messageId]: {
+            status: "ready",
+            text: intent,
+            sources: intentSources,
+          },
+        }));
+      } catch {
+        setEntryIntents((prev) => ({
+          ...prev,
+          [messageId]: {
+            status: "error",
+            error: INTENT_ERROR_MESSAGE,
+          },
+        }));
+      }
+    },
+    [entryIntents]
+  );
+
+  const handleIntentSave = useCallback(
+    async (messageId: string) => {
+      const current = entryIntents[messageId];
+      if (!current || current.status !== "ready") {
+        return;
+      }
+      const trimmed = current.text?.trim();
+      if (!trimmed) {
+        return;
+      }
+
+      const updated = await updateMessage(messageId, {
+        intent: trimmed,
+        intentSources:
+          current.sources && current.sources.length > 0
+            ? current.sources
+            : undefined,
+      });
+      if (!updated) {
+        return;
+      }
+
+      setEntryIntents((prev) => {
+        if (!prev[messageId]) {
+          return prev;
+        }
+        const { [messageId]: _removed, ...rest } = prev;
+        return rest;
+      });
+    },
+    [entryIntents, updateMessage]
+  );
+
+  const handleIntentDelete = useCallback(
+    async (messageId: string) => {
+      const updated = await updateMessage(messageId, {
+        intent: null,
+        intentSources: undefined,
+      });
+      if (!updated) {
+        return;
+      }
+
+      setEntryIntents((prev) => {
+        if (!prev[messageId]) {
+          return prev;
+        }
+        const { [messageId]: _removed, ...rest } = prev;
+        return rest;
+      });
+      setIntentCitationHover((prev) =>
+        prev?.messageId === messageId ? null : prev
+      );
+      setIntentCitationLock((prev) =>
+        prev?.messageId === messageId ? null : prev
+      );
+    },
+    [updateMessage]
+  );
+
+  const setEntryRef = useCallback(
+    (messageId: string) => (node: HTMLDivElement | null) => {
+      if (node) {
+        entryRefMap.current.set(messageId, node);
+        return;
+      }
+      entryRefMap.current.delete(messageId);
+    },
+    []
+  );
+
+  const getEntryAttachmentMap = useCallback((message: Message) => {
+    const existing = entryAttachmentMapRef.current.get(message.id);
+    if (existing) {
+      return existing;
+    }
+    const map = new Map<string, MessageAttachment>();
+    (message.attachments ?? []).forEach((attachment) => {
+      map.set(attachment.id, attachment);
+    });
+    entryAttachmentMapRef.current.set(message.id, map);
+    return map;
+  }, []);
+
+  const handleEntryFocus = useCallback(
+    (message: Message) => {
+      if (message.role !== "user") {
+        return;
+      }
+      setActiveEntryId(message.id);
+      if (
+        !entrySnapshotRef.current ||
+        entrySnapshotRef.current.messageId !== message.id
+      ) {
+        entrySnapshotRef.current = buildEntrySnapshot(message);
+      }
+      getEntryAttachmentMap(message);
+    },
+    [getEntryAttachmentMap]
+  );
+
+  const saveEntryFromDom = useCallback(
+    async (message: Message) => {
+      if (message.role !== "user") {
+        return;
+      }
+      const entry = entryRefMap.current.get(message.id);
+      if (!entry) {
+        return;
+      }
+      const attachmentMap =
+        entryAttachmentMapRef.current.get(message.id) ?? new Map();
+      const { text, attachments } = extractEntryState(entry, attachmentMap);
+      const nextText = normalizeLineBreaks(text);
+      const nextAttachments = getInlineAttachments(attachments);
+      const currentAttachments = getInlineAttachments(message.attachments);
+      const sortedNextAttachments = sortAttachmentsForEntry(
+        nextText,
+        nextAttachments
+      );
+      const sortedCurrentAttachments = sortAttachmentsForEntry(
+        message.content,
+        currentAttachments
+      );
+      const hasContentChanged = nextText !== message.content;
+      const hasAttachmentChanges = !areAttachmentsEqual(
+        sortedCurrentAttachments,
+        sortedNextAttachments
+      );
+
+      if (!hasContentChanged && !hasAttachmentChanges) {
+        return;
+      }
+
+      const updates: Partial<
+        Pick<Message, "content" | "attachments" | "intent" | "intentSources">
+      > = {
+        content: nextText,
+        attachments:
+          sortedNextAttachments.length > 0
+            ? sortedNextAttachments
+            : undefined,
+      };
+      if (hasContentChanged) {
+        updates.intent = null;
+        updates.intentSources = undefined;
+      }
+
+      const updated = await updateMessage(message.id, updates);
+      if (!updated) {
+        return;
+      }
+
+      setEntryIntents((prev) => {
+        if (!prev[message.id]) {
+          return prev;
+        }
+        const { [message.id]: _, ...rest } = prev;
+        return rest;
+      });
+    },
+    [updateMessage]
+  );
+
+  const handleEntryBlur = useCallback(
+    async (message: Message, event: React.FocusEvent<HTMLDivElement>) => {
+      if (message.role !== "user") {
+        return;
+      }
+      if (entryToolbarPointerDownRef.current) {
+        entryToolbarPointerDownRef.current = false;
+        return;
+      }
+      const currentTarget = event.currentTarget;
+      const nextTarget = event.relatedTarget as Node | null;
+      const activeElement = currentTarget.ownerDocument.activeElement;
+      if (!shouldCommitEntryBlur(currentTarget, nextTarget, activeElement)) {
+        return;
+      }
+      await saveEntryFromDom(message);
+      setActiveEntryId((prev) => (prev === message.id ? null : prev));
+      entrySnapshotRef.current = null;
+      entryAttachmentMapRef.current.delete(message.id);
+    },
+    [saveEntryFromDom]
+  );
+
+  const handleEntryToolbarPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      entryToolbarPointerDownRef.current = true;
+      event.preventDefault();
+      setTimeout(() => {
+        entryToolbarPointerDownRef.current = false;
+      }, 0);
+    },
+    []
+  );
+
+  const handleEntryUndo = useCallback((messageId: string) => {
+    if (typeof document === "undefined") {
+      return;
+    }
+    const entry = entryRefMap.current.get(messageId);
+    if (!entry) {
+      return;
+    }
+    entry.focus();
+    document.execCommand("undo");
+  }, []);
+
+  const handleEntryRestore = useCallback((message: Message) => {
+    const entry = entryRefMap.current.get(message.id);
+    if (!entry) {
+      return;
+    }
+    const snapshot = getEntryRestoreSnapshot(
+      message,
+      entrySnapshotRef.current
+    );
+    entrySnapshotRef.current = snapshot;
+    entry.innerHTML = buildEntryHtml(
+      snapshot.content,
+      getInlineAttachments(snapshot.attachments)
+    );
+    const map = new Map<string, MessageAttachment>();
+    snapshot.attachments.forEach((attachment) => {
+      map.set(attachment.id, attachment);
+    });
+    entryAttachmentMapRef.current.set(message.id, map);
+    entry.focus();
+  }, []);
+
+  const handleEntryDragOver = useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      const items = Array.from(event.dataTransfer?.items ?? []);
+      const hasImage = items.some(
+        (item) => item.kind === "file" && item.type.startsWith("image/")
+      );
+      if (!hasImage) {
+        return;
+      }
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "copy";
+    },
+    []
+  );
+
+  const handleEntryDragStart = useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      if (isEntryAttachmentTarget(event.target)) {
+        event.stopPropagation();
+      }
+      event.preventDefault();
+    },
+    []
+  );
+
+  const handleEntryDrop = useCallback(
+    async (message: Message, event: React.DragEvent<HTMLDivElement>) => {
+      if (message.role !== "user") {
+        return;
+      }
+      const files = Array.from(event.dataTransfer?.files ?? []);
+      const imageFiles = files.filter((file) =>
+        file.type.startsWith("image/")
+      );
+      if (imageFiles.length === 0) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+
+      const entry = entryRefMap.current.get(message.id);
+      if (!entry) {
+        return;
+      }
+
+      handleEntryFocus(message);
+
+      const selection = window.getSelection();
+      let range: Range | null = null;
+      const { clientX, clientY } = event;
+      if (typeof document.caretRangeFromPoint === "function") {
+        range = document.caretRangeFromPoint(clientX, clientY);
+      } else if (typeof document.caretPositionFromPoint === "function") {
+        const position = document.caretPositionFromPoint(clientX, clientY);
+        if (position) {
+          range = document.createRange();
+          range.setStart(position.offsetNode, position.offset);
+          range.collapse(true);
+        }
+      } else if (selection && selection.rangeCount > 0) {
+        range = selection.getRangeAt(0);
+      }
+
+      if (!range) {
+        return;
+      }
+
+      if (!entry.contains(range.startContainer)) {
+        range = document.createRange();
+        range.selectNodeContents(entry);
+        range.collapse(false);
+      }
+
+      range.collapse(true);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+
+      const attachmentMap = getEntryAttachmentMap(message);
+
+      for (const file of imageFiles) {
+        try {
+          const attachment = await buildImageAttachment(file);
+          attachmentMap.set(attachment.id, attachment);
+          const element = createAttachmentElement(
+            entry.ownerDocument,
+            attachment
+          );
+          range.insertNode(element);
+          const spacer = entry.ownerDocument.createTextNode("");
+          element.after(spacer);
+          range.setStart(spacer, 0);
+          range.collapse(true);
+          selection?.removeAllRanges();
+          selection?.addRange(range);
+        } catch (error) {
+          setSendError(
+            error instanceof Error ? error.message : "Unable to add image."
+          );
+        }
+      }
+    },
+    [getEntryAttachmentMap, handleEntryFocus]
   );
 
   const queuedMessageCount = useMemo(() => {
@@ -1389,10 +2518,8 @@ export function ConversationPane({
                           <Button
                             data-control="mic"
                             className={cn(
-                              "h-10 w-10 rounded-full text-[11px] font-semibold",
-                              voiceStatus === "recording"
-                                ? "bg-[color:var(--page-accent-strong)] text-white"
-                                : "bg-[color:var(--page-accent)] text-[color:var(--page-ink-strong)]"
+                              "h-10 w-10 rounded-full border text-[11px] font-semibold transition-colors disabled:opacity-100",
+                              TALK_TONE_CLASSES[talkTone]
                             )}
                             onClick={handleMicClick}
                             aria-pressed={
@@ -1677,9 +2804,62 @@ export function ConversationPane({
                         activeSentence?.messageId === message.id
                           ? activeSentence.sentenceIndex
                           : null;
+                      const savedIntent =
+                        message.role === "user" &&
+                        typeof message.intent === "string"
+                          ? message.intent.trim()
+                          : "";
+                      const intentState =
+                        message.role === "user"
+                          ? entryIntents[message.id]
+                          : undefined;
+                      const intentStatus = savedIntent
+                        ? "ready"
+                        : intentState?.status;
+                      const intentText =
+                        savedIntent || intentState?.text || "";
+                      const intentSources =
+                        message.role === "user"
+                          ? message.intentSources ?? intentState?.sources ?? []
+                          : [];
+                      const lockedCitationId =
+                        intentCitationLock?.messageId === message.id
+                          ? intentCitationLock.citationId
+                          : null;
+                      const activeCitationId =
+                        activeIntentCitation?.messageId === message.id
+                          ? activeIntentCitation.citationId
+                          : null;
+                      const citationTargets = activeCitationId
+                        ? getIntentCitationTargets(
+                            intentSources,
+                            activeCitationId
+                          )
+                        : null;
+                      const shouldShowIntent =
+                        Boolean(savedIntent) || Boolean(intentState);
+                      const isIntentSaved = Boolean(savedIntent);
+                      const isEditable = message.role === "user";
+                      const isActiveEntry = activeEntryId === message.id;
+                      const entryAttachments = getInlineAttachments(
+                        message.attachments
+                      );
+                      const entryHtml = isEditable
+                        ? buildEntryHtml(message.content, entryAttachments, {
+                            activeSentenceIndex: isActiveEntry
+                              ? null
+                              : activeSentenceIndex,
+                            citationTargets,
+                          })
+                        : "";
 
                       return (
-                        <div key={message.id} className="space-y-3">
+                        <div
+                          key={message.id}
+                          data-entry-id={message.id}
+                          data-entry-role={message.role}
+                          className="space-y-3"
+                        >
                           <div className="flex items-center justify-between">
                             <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--page-muted)]">
                               {message.role === "user" ? "Entry" : "Reply"}
@@ -1694,12 +2874,173 @@ export function ConversationPane({
                               </span>
                             )}
                           </div>
-                          <div className="space-y-3 text-base leading-7 text-[color:var(--page-ink-strong)]">
-                            {renderMarkdown(message.content, {
-                              activeSentenceIndex,
-                            })}
+                          <div
+                            className="space-y-2"
+                            onFocus={
+                              isEditable ? () => handleEntryFocus(message) : undefined
+                            }
+                            onBlur={
+                              isEditable
+                                ? (event) => void handleEntryBlur(message, event)
+                                : undefined
+                            }
+                          >
+                            {isEditable && (
+                              <div
+                                data-role="entry-toolbar"
+                                data-variant="editor-toolbar"
+                                data-state={isActiveEntry ? "active" : "idle"}
+                                className={cn(
+                                  "flex w-full items-center gap-1 rounded-sm border border-[color:var(--page-border)] bg-[color:var(--page-paper)] px-2 text-[11px] text-[color:var(--page-muted)] shadow-sm shadow-black/5 transition-all duration-150",
+                                  isActiveEntry
+                                    ? "py-1 opacity-100"
+                                    : "max-h-0 overflow-hidden border-transparent py-0 opacity-0 pointer-events-none"
+                                )}
+                                aria-hidden={!isActiveEntry}
+                                onPointerDown={handleEntryToolbarPointerDown}
+                              >
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  data-control="entry-undo"
+                                  title="Undo"
+                                  aria-label="Undo"
+                                  className="h-7 gap-1.5 px-2 text-[11px] font-semibold text-[color:var(--page-ink-strong)] hover:bg-[color:var(--page-border)]/60"
+                                  onClick={() => handleEntryUndo(message.id)}
+                                  disabled={!isActiveEntry}
+                                >
+                                  <RotateCcw className="h-3.5 w-3.5" />
+                                  <span>Undo</span>
+                                </Button>
+                                <span
+                                  aria-hidden="true"
+                                  className="h-5 w-px bg-[color:var(--page-border)]/80"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  data-control="entry-restore"
+                                  title="Restore"
+                                  aria-label="Restore"
+                                  className="h-7 gap-1.5 px-2 text-[11px] font-semibold text-[color:var(--page-ink-strong)] hover:bg-[color:var(--page-border)]/60"
+                                  onClick={() => handleEntryRestore(message)}
+                                  disabled={!isActiveEntry}
+                                >
+                                  <RotateCw className="h-3.5 w-3.5" />
+                                  <span>Restore</span>
+                                </Button>
+                              </div>
+                            )}
+                            {isEditable ? (
+                              <div
+                                ref={setEntryRef(message.id)}
+                                data-role="entry-body"
+                                data-entry-editable="true"
+                                contentEditable
+                                suppressContentEditableWarning
+                                className={cn(
+                                  "rounded-sm border border-transparent px-3 py-2 text-base leading-7 text-[color:var(--page-ink-strong)] transition-colors",
+                                  "whitespace-pre-wrap break-words",
+                                  "cursor-text hover:border-[color:var(--page-border)] hover:bg-[color:var(--page-card)]/50 focus-within:border-[color:var(--page-border)] focus-within:bg-[color:var(--page-card)]/70"
+                                )}
+                                onDragOver={handleEntryDragOver}
+                                onDragStart={handleEntryDragStart}
+                                onDrop={(event) =>
+                                  void handleEntryDrop(message, event)
+                                }
+                                aria-label="Journal entry"
+                                dangerouslySetInnerHTML={{ __html: entryHtml }}
+                              />
+                            ) : (
+                              <div
+                                data-role="entry-body"
+                                className="space-y-3 text-base leading-7 text-[color:var(--page-ink-strong)]"
+                              >
+                                {renderMarkdown(message.content, {
+                                  activeSentenceIndex,
+                                })}
+                              </div>
+                            )}
                           </div>
-                          <div className="flex items-center justify-end">
+                          {shouldShowIntent && (
+                            <div className="space-y-2 rounded-sm border border-[color:var(--page-border)] bg-[color:var(--page-card)] p-4 text-sm text-[color:var(--page-ink-strong)] shadow-sm shadow-black/5">
+                              <p className="text-[11px] uppercase tracking-[0.2em] text-[color:var(--page-muted)]">
+                                Intent
+                              </p>
+                              <div className="space-y-2 leading-relaxed">
+                                {intentStatus === "loading" ? (
+                                  <p className="text-[color:var(--page-muted)]">
+                                    Summarizing intent...
+                                  </p>
+                                ) : intentStatus === "error" ? (
+                                  <p className="text-[color:var(--page-muted)]">
+                                    {intentState?.error}
+                                  </p>
+                                ) : (
+                                  renderIntentText(intentText, {
+                                    sources: intentSources,
+                                    activeCitationId,
+                                    lockedCitationId,
+                                    onCitationEnter: (citationId) =>
+                                      handleCitationEnter(
+                                        message.id,
+                                        citationId
+                                      ),
+                                    onCitationLeave: (citationId) =>
+                                      handleCitationLeave(
+                                        message.id,
+                                        citationId
+                                      ),
+                                    onCitationClick: (citationId) =>
+                                      handleCitationClick(
+                                        message.id,
+                                        citationId
+                                      ),
+                                  })
+                                )}
+                              </div>
+                              {intentStatus &&
+                                intentStatus !== "loading" &&
+                                intentStatus !== "error" && (
+                                  <div className="flex flex-wrap items-center justify-end gap-2">
+                                    {isIntentSaved ? (
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        data-control="intent-delete"
+                                        data-message-id={message.id}
+                                        className="h-7 px-2 text-[11px] text-[color:var(--page-muted)] hover:text-[color:var(--page-ink-strong)]"
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          handleIntentDelete(message.id);
+                                        }}
+                                      >
+                                        Delete intent
+                                      </Button>
+                                    ) : (
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        data-control="intent-save"
+                                        data-message-id={message.id}
+                                        className="h-7 px-2 text-[11px]"
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          handleIntentSave(message.id);
+                                        }}
+                                      >
+                                        Save intent
+                                      </Button>
+                                    )}
+                                  </div>
+                                )}
+                            </div>
+                          )}
+                          <div className="flex items-center justify-end gap-2">
                             <Button
                               type="button"
                               variant="ghost"
@@ -1707,12 +3048,42 @@ export function ConversationPane({
                               data-control="entry-tts"
                               data-message-id={message.id}
                               className="h-7 px-2 text-[11px] text-[color:var(--page-muted)] hover:text-[color:var(--page-ink-strong)]"
-                              onClick={() =>
-                                handleEntryPlayback(message.id, message.content)
-                              }
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleEntryPlayback(message);
+                              }}
                             >
                               Listen
                             </Button>
+                            {message.role === "user" && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                data-control="entry-intent"
+                                data-message-id={message.id}
+                                className="h-7 px-2 text-[11px] text-[color:var(--page-muted)] hover:text-[color:var(--page-ink-strong)]"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleEntryIntent(message);
+                                }}
+                                disabled={
+                                  intentState?.status === "loading" ||
+                                  isIntentSaved
+                                }
+                                aria-busy={
+                                  intentState?.status === "loading"
+                                    ? true
+                                    : undefined
+                                }
+                              >
+                                {isIntentSaved
+                                  ? "Saved"
+                                  : intentState?.status === "loading"
+                                    ? "Intent..."
+                                    : "Intent"}
+                              </Button>
+                            )}
                           </div>
                         </div>
                       );
