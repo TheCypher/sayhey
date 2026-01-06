@@ -727,10 +727,30 @@ describe("ConversationPane", () => {
     expect(html).toContain('data-role="entry-toolbar"');
     expect(html).toContain('data-variant="editor-toolbar"');
     expect(html).toContain(
-      "flex w-full items-center gap-1 rounded-sm border border-[color:var(--page-border)] bg-[color:var(--page-paper)] px-2 text-[11px] text-[color:var(--page-muted)] shadow-sm shadow-black/5 transition-all duration-150"
+      "flex w-full flex-wrap items-center gap-1 rounded-sm border bg-[color:var(--page-paper)] px-2 text-[11px] text-[color:var(--page-muted)] shadow-sm shadow-black/5 transition-all duration-150"
     );
     expect(html).toContain('data-control="entry-undo"');
     expect(html).toContain('data-control="entry-restore"');
+    expect(html).toContain('data-control="entry-ai-edit"');
+    expect(html).toContain('data-control="entry-text-style"');
+    expect(html).toContain('data-control="entry-font-family"');
+    expect(html).toContain('data-control="entry-font-size"');
+    expect(html).toContain('data-control="entry-text-color"');
+    expect(html).toContain('data-control="entry-bold"');
+    expect(html).toContain('data-control="entry-italic"');
+    expect(html).toContain('data-control="entry-underline"');
+    expect(html).toContain('data-control="entry-highlight"');
+    expect(html).toContain('data-control="entry-list-bulleted"');
+    expect(html).toContain('data-control="entry-list-numbered"');
+    expect(html).toContain('data-control="entry-list-check"');
+    expect(html).toContain('data-control="entry-link"');
+    expect(html).toContain('data-control="entry-align"');
+    expect(html).toContain('data-control="entry-indent-increase"');
+    expect(html).toContain('data-control="entry-indent-decrease"');
+    expect(html).toContain('data-control="entry-strikethrough"');
+    expect(html).toContain('data-control="entry-superscript"');
+    expect(html).toContain('data-control="entry-subscript"');
+    expect(html).toContain('data-control="entry-more"');
     expect(html).toContain(">Undo<");
     expect(html).toContain(">Restore<");
     expect(html).toContain('data-entry-id="msg-1"');
@@ -1079,6 +1099,37 @@ describe("ConversationPane", () => {
 
     expect(html).toContain("Say your entry to get started.");
     expect(html).toContain('href="/welcome"');
+  });
+
+  it("renders the landing hero on new journal views", () => {
+    const html = renderToStaticMarkup(
+      <ConversationPane initialView="home" displayName="Nickson" />
+    );
+
+    expect(html).toContain("Welcome back, Nickson");
+    expect(html).toContain("just speak.");
+    expect(html).toContain("Live capture");
+    expect(html).toContain("Start journaling");
+  });
+
+  it("matches the landing background on the new journal navbar", () => {
+    const html = renderToStaticMarkup(
+      <ConversationPane initialView="home" displayName="Nickson" />
+    );
+
+    expect(html).toMatch(
+      /data-nav="journal"[^>]*class="[^"]*bg-\[color:var\(--page-bg\)\][^"]*"/
+    );
+  });
+
+  it("matches the landing background on the new journal footer", () => {
+    const html = renderToStaticMarkup(
+      <ConversationPane initialView="home" displayName="Nickson" />
+    );
+
+    expect(html).toMatch(
+      /data-location="journal-footer"[^>]*class="[^"]*bg-\[color:var\(--page-bg\)\][^"]*"/
+    );
   });
 
   it("builds journal hrefs for conversations", () => {

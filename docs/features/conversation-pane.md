@@ -12,7 +12,7 @@
 ## Non-Goals
 - Server-side transcript storage.
 - Streaming transcripts in real time.
-- Rich text formatting toolbars beyond Undo/Restore and inline image attachments.
+- Functional rich text formatting beyond Undo/Restore and inline image attachments (the toolbar shows coming-soon controls only).
 
 ## Architecture
 - `components/application/conversation-pane.tsx` hosts the full experience.
@@ -38,7 +38,7 @@
 - Entry and reply headers show the saved date and time.
 - Each entry includes bottom-right Listen and Intent buttons; Listen stops current audio and speaks the entry, while Intent summarizes the entry's goal and motivation in the user's voice without advice.
 - Intent summaries can be saved per entry; saved intents stay visible until deleted.
-- Intent summaries include inline citations; hovering or tapping a citation highlights the referenced sentence, paragraph, or image in the entry.
+- Intent summaries include inline citations; hovering or tapping a citation highlights the referenced sentence, paragraph, or image (with described image sources) in the entry.
 - The active sentence stays highlighted while audio playback runs or loads the next sentence.
 - Journals render as a full-width white canvas with editable text entries (no card styling), a sticky full-width journal navbar with a desktop single row (sidebar toggle + JOURNAL left, centered mic/audio controls, user name + account menu right) that wraps the center controls onto a second row on smaller screens, plus a bottom text entry rail below the stream.
 - Audio queue labels and the Stop audio control appear only after playback has been activated at least once.
@@ -46,7 +46,7 @@
 - Low-confidence transcripts still receive replies; field updates are suppressed server-side.
 - The text composer is collapsed by default and revealed via a footer toggle below the stream; the hide control sits next to Send and the composer auto-collapses after submit.
 - Replies render Markdown blocks with inline emphasis (bold/italic/inline code).
-- User entries are inline-editable in place; focus reveals a compact editor-style toolbar with labeled Undo and Restore controls, and Restore returns the entry to its pre-edit text and attachments.
+- User entries are inline-editable in place; focus reveals a compact editor-style toolbar with labeled Undo and Restore controls plus disabled, coming-soon controls for AI Edit, typography, formatting, lists, links, alignment/indentation, and strike/script options. Restore returns the entry to its pre-edit text and attachments.
 - Drag-and-drop image attachments insert at the caret and render inline, while entry text remains plain and attachments stay locked in place during edits.
 - The layout uses a device-width viewport so the history rail and journal pane stack on small screens.
 - Journal pages use a slim journal navbar: the header row anchors the sidebar toggle + JOURNAL label left, centers mic/audio controls, and places the user name + account menu right; on mobile the center controls drop beneath the header row to avoid horizontal scrolling; the marketing nav stays hidden.

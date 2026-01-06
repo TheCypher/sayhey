@@ -78,6 +78,25 @@ describe("ConversationSidebar", () => {
     expect(html).toContain(">Journals<");
   });
 
+  it("links the new journal action to /journals/new", () => {
+    const html = renderToStaticMarkup(
+      <ConversationSidebar
+        conversations={sampleConversations}
+        activeConversationId="conv-1"
+        searchTerm=""
+        onSearchTermChange={noop}
+        onNewConversation={noop}
+        onOpenConversation={noop}
+        onRenameConversation={noop}
+        onPinConversation={noop}
+        onArchiveConversation={noop}
+        onDeleteConversation={noop}
+      />
+    );
+
+    expect(html).toContain('href="/journals/new"');
+  });
+
   it("renders chat titles with timestamps beneath and no previews", () => {
     const html = renderToStaticMarkup(
       <ConversationSidebar

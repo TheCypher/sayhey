@@ -11,13 +11,25 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import {
+  AlignLeft,
+  ChevronDown,
   HelpCircle,
+  Highlighter,
+  IndentDecrease,
+  IndentIncrease,
+  Link2,
+  List,
+  ListChecks,
+  ListOrdered,
   LogOut,
+  Mic,
   MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
   RotateCcw,
   RotateCw,
+  Sparkles,
+  Strikethrough,
   User,
 } from "lucide-react";
 
@@ -44,6 +56,11 @@ type IntentSourceInput = {
   id: string;
   type: IntentSource["type"];
   text: string;
+};
+type IntentAttachmentInput = {
+  id: string;
+  name: string;
+  dataUrl: string;
 };
 
 type IntentCitationToken =
@@ -232,6 +249,83 @@ const isSpacebarKey = (event: SpacebarShortcutEvent) =>
 
 const SPACEBAR_DOUBLE_TAP_MS = 280;
 
+const ORBIT_VARIANTS = [
+  {
+    name: "swoop-left-high",
+    path: "M-600,600 C 200,0 1800,0 3000,900",
+    width: "260vw",
+    height: "180vh",
+    top: "-25vh",
+    left: "-70vw",
+    rotate: 0,
+  },
+  {
+    name: "swoop-left-low",
+    path: "M-600,1200 C 300,1500 2000,1400 3000,700",
+    width: "260vw",
+    height: "200vh",
+    top: "-20vh",
+    left: "-70vw",
+    rotate: 0,
+  },
+  {
+    name: "swoop-right-high",
+    path: "M3000,600 C 2200,0 400,0 -600,900",
+    width: "260vw",
+    height: "180vh",
+    top: "-25vh",
+    left: "-190vw",
+    rotate: 0,
+  },
+  {
+    name: "diag-left-to-right",
+    path: "M-700,-400 C 400,200 2000,600 3100,1800",
+    width: "280vw",
+    height: "220vh",
+    top: "-40vh",
+    left: "-80vw",
+    rotate: 0,
+  },
+  {
+    name: "diag-right-to-left",
+    path: "M3100,-400 C 2300,200 800,1200 -700,1800",
+    width: "280vw",
+    height: "220vh",
+    top: "-40vh",
+    left: "-170vw",
+    rotate: 0,
+  },
+  {
+    name: "top-down",
+    path: "M1400,-800 C 800,200 1800,1600 1400,2600",
+    width: "200vw",
+    height: "260vh",
+    top: "-80vh",
+    left: "-30vw",
+    rotate: 0,
+  },
+  {
+    name: "bottom-up",
+    path: "M900,2600 C 1600,1600 2000,400 700,-800",
+    width: "200vw",
+    height: "260vh",
+    top: "-100vh",
+    left: "-40vw",
+    rotate: 0,
+  },
+] as const;
+
+type OrbitVariant = (typeof ORBIT_VARIANTS)[number];
+type OrbitDirection = "ltr" | "rtl";
+type OrbitConfig = {
+  variant: OrbitVariant;
+  startOffset: string;
+  direction: OrbitDirection;
+  from: string;
+  to: string;
+  duration: string;
+};
+
 const getInitials = (value: string) => {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -246,6 +340,291 @@ const getInitials = (value: string) => {
   const last = parts[parts.length - 1]?.[0] ?? "";
   return `${first}${last}`.toUpperCase() || "U";
 };
+
+type NewJournalLandingProps = {
+  greetingName: string | null;
+  micState: MicState;
+  talkTone: TalkTone;
+  isMicBusy: boolean;
+  onMicToggle: () => void;
+};
+
+const NewJournalLanding = ({
+  greetingName,
+  micState,
+  talkTone,
+  isMicBusy,
+  onMicToggle,
+}: NewJournalLandingProps) => {
+  const [orbitConfig, setOrbitConfig] = useState<OrbitConfig>(() => ({
+    variant: ORBIT_VARIANTS[0],
+    startOffset: "0%",
+    direction: "ltr",
+    from: "0%",
+    to: "100%",
+    duration: "32s",
+  }));
+
+  useEffect(() => {
+    const pickInRange = (min: number, max: number) =>
+      Math.random() * (max - min) + min;
+    const buildConfig = (): OrbitConfig => {
+      const variant =
+        ORBIT_VARIANTS[Math.floor(Math.random() * ORBIT_VARIANTS.length)];
+      const direction = Math.random() > 0.5 ? "ltr" : "rtl";
+      const spanStart = pickInRange(-12, -4);
+      const spanEnd = pickInRange(112, 135);
+      const from = direction === "ltr" ? `${spanStart}%` : `${spanEnd}%`;
+      const to = direction === "ltr" ? `${spanEnd}%` : `${spanStart}%`;
+      const startOffset = `${Math.floor(pickInRange(40, 60))}%`;
+      const durationMs = Math.floor(pickInRange(32000, 42000));
+      const duration = `${Math.floor(durationMs / 1000)}s`;
+      return {
+        variant,
+        startOffset,
+        direction,
+        from,
+        to,
+        duration,
+      };
+    };
+
+    setOrbitConfig(buildConfig());
+  }, []);
+
+  const isCapturing = micState === "recording" || micState === "paused";
+  const statusCopy = useMemo(() => {
+    if (micState === "recording") {
+      return "Listening...";
+    }
+    if (micState === "paused") {
+      return "Paused.";
+    }
+    if (micState === "processing") {
+      return "Transcribing...";
+    }
+    if (micState === "ready") {
+      return "Preparing...";
+    }
+    if (micState === "error") {
+      return "Microphone error.";
+    }
+    return "Ready to listen.";
+  }, [micState]);
+  const helperCopy = useMemo(() => {
+    if (micState === "recording") {
+      return "Speak your entry. Double-tap Space to stop.";
+    }
+    if (micState === "paused") {
+      return "Press Space to resume or double-tap to stop.";
+    }
+    if (micState === "processing") {
+      return "Sending your audio for transcription.";
+    }
+    if (micState === "ready") {
+      return "Finalizing your entry.";
+    }
+    if (micState === "error") {
+      return "Check mic permissions and press Space to try again.";
+    }
+    return "Press Space to start. Double-tap to stop & save.";
+  }, [micState]);
+
+  return (
+    <div
+      data-page="new-journal-landing"
+      className="relative flex w-full flex-col gap-10 py-6 lg:py-10"
+    >
+      <div
+        data-layout="home-split"
+        className="grid w-full gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] lg:items-center"
+      >
+        <section
+          data-section="home-hero"
+          className="relative flex flex-col gap-6 text-center animate-fade-up [animation-delay:120ms] lg:text-left"
+        >
+          <div
+            aria-hidden="true"
+            data-orbit="hero"
+            data-orbit-size="2xl"
+            data-orbit-visible="all"
+            data-orbit-direction={orbitConfig.direction}
+            data-orbit-variant={orbitConfig.variant.name}
+            className="pointer-events-none absolute block overflow-visible"
+            style={{
+              width: orbitConfig.variant.width,
+              height: orbitConfig.variant.height,
+              top: orbitConfig.variant.top,
+              left: orbitConfig.variant.left,
+              transform:
+                orbitConfig.variant.rotate !== 0
+                  ? `rotate(${orbitConfig.variant.rotate}deg)`
+                  : undefined,
+            }}
+          >
+            <div className="relative h-full w-full origin-center text-[color:var(--page-muted)] opacity-80 scale-[0.7] sm:scale-[0.82] md:scale-100">
+              <svg
+                data-animation="home-orbit"
+                viewBox="-1200 -1200 5600 4800"
+                preserveAspectRatio="none"
+                className="h-full w-full origin-left"
+              >
+                <defs>
+                  <path
+                    id="home-orbit-path"
+                    d={orbitConfig.variant.path}
+                  />
+                </defs>
+                <text
+                  className="font-mono text-[18px] uppercase tracking-[0.1em] sm:text-[22px] md:text-[27px]"
+                  fill="currentColor"
+                >
+                  <textPath href="#home-orbit-path" startOffset={orbitConfig.startOffset}>
+                    Say hey - voice-first entries - press Space to talk -
+                    <animate
+                      attributeName="startOffset"
+                      from={orbitConfig.from}
+                      to={orbitConfig.to}
+                      begin="0s"
+                      dur={orbitConfig.duration}
+                      repeatCount="indefinite"
+                    />
+                  </textPath>
+                </text>
+              </svg>
+              <span className="absolute inset-3 rounded-full border border-[color:var(--page-border)] opacity-40" />
+            </div>
+          </div>
+          <div className="flex flex-col gap-4">
+            {greetingName ? (
+              <p className="mx-auto text-lg font-medium text-[color:var(--page-ink-strong)] lg:mx-0">
+                Welcome back, {greetingName}
+              </p>
+            ) : null}
+            <p className="mx-auto inline-flex items-center gap-3 rounded-full border border-[color:var(--page-border)] bg-[color:var(--page-paper)]/80 px-4 py-1 text-[11px] uppercase tracking-[0.4em] text-[color:var(--page-muted)] shadow-sm shadow-black/5 lg:mx-0">
+              <span
+                className="h-2 w-2 rounded-full bg-[color:var(--home-sage)] shadow-[0_0_12px_rgba(127,185,164,0.6)]"
+                aria-hidden="true"
+              />
+              Voice-first journal & assistant
+            </p>
+            <h1 className="font-display text-4xl leading-tight md:text-7xl">
+              <span className="text-[color:var(--page-muted)]">Don't type,</span>{" "}
+              <span className="bg-[linear-gradient(120deg,var(--home-sage),var(--home-ember))] bg-clip-text text-transparent">
+                just speak.
+              </span>
+            </h1>
+            <p className="mx-auto max-w-xl text-base text-[color:var(--page-muted)] md:text-lg lg:mx-0">
+              Capture your thoughts & ideas easily. Clear transcripts, quiet by
+              default, replies only when you ask.
+            </p>
+          </div>
+
+          <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center lg:justify-start">
+            <button
+              type="button"
+              onClick={onMicToggle}
+              disabled={isMicBusy}
+              className={cn(
+                buttonVariants({ size: "lg" }),
+                "rounded-full bg-[linear-gradient(120deg,var(--home-sage),var(--home-ember))] px-6 text-white shadow-lg shadow-black/10 transition hover:opacity-90"
+              )}
+            >
+              {isCapturing ? "Stop capture" : "Start journaling"}
+            </button>
+            <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-[color:var(--page-muted)] lg:justify-start">
+              <span className="inline-flex items-center gap-2 rounded-full border border-[color:var(--page-border)] bg-white/70 px-3 py-1">
+                <span className="rounded-md border border-[color:var(--page-border)] bg-white px-2 py-0.5 font-mono text-[10px] uppercase text-[color:var(--page-ink-strong)]">
+                  Space
+                </span>
+                Space to talk, double-tap to stop & save
+              </span>
+              <span className="rounded-full border border-[color:var(--page-border)] bg-white/70 px-3 py-1">
+                Local-only, no cloud saving.
+              </span>
+            </div>
+          </div>
+
+          <p className="text-sm text-[color:var(--page-muted)] lg:text-left">
+            Need a quick tour?{" "}
+            <Link
+              href="/welcome"
+              className="font-semibold text-[color:var(--page-accent-strong)] underline underline-offset-2"
+            >
+              View the welcome guide.
+            </Link>
+          </p>
+        </section>
+
+        <section
+          data-section="home-voice-card"
+          className="relative overflow-hidden rounded-[32px] border border-[color:var(--page-border)] bg-[color:var(--page-card)]/95 p-8 text-center shadow-2xl shadow-black/10 backdrop-blur animate-fade-up [animation-delay:240ms]"
+        >
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(242,182,109,0.2),_transparent_60%)]" />
+          <div className="pointer-events-none absolute -bottom-24 left-1/2 h-48 w-48 -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_top,_rgba(111,176,154,0.35),_transparent_70%)] blur-2xl" />
+          <div className="relative flex flex-col items-center gap-6">
+            <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.4em] text-[color:var(--page-muted)]">
+              <span
+                className="h-2 w-2 rounded-full bg-[color:var(--home-sage)] shadow-[0_0_12px_rgba(127,185,164,0.6)]"
+                aria-hidden="true"
+              />
+              Live capture
+            </div>
+            <div
+              data-control="home-voice-controls"
+              data-state={micState}
+              className="flex flex-col items-center gap-3"
+            >
+              <div className="relative flex items-center justify-center">
+                <div
+                  className={cn(
+                    "pointer-events-none absolute h-24 w-24 rounded-full border opacity-80",
+                    isCapturing
+                      ? "border-[color:var(--talk-listening-bg)] opacity-90 animate-soft-pulse"
+                      : "border-[color:var(--page-border)]"
+                  )}
+                />
+                <div
+                  className={cn(
+                    "pointer-events-none absolute h-32 w-32 rounded-full border opacity-60 [animation-delay:1.2s]",
+                    isCapturing
+                      ? "border-[color:var(--talk-listening-bg)] opacity-70 animate-soft-pulse"
+                      : "border-[color:var(--page-border)]"
+                  )}
+                />
+                <Button
+                  type="button"
+                  size="lg"
+                  variant={isCapturing ? "default" : "outline"}
+                  disabled={isMicBusy}
+                  onClick={onMicToggle}
+                  className={cn(
+                    "h-16 w-16 rounded-full border p-0 shadow-md shadow-black/10 transition disabled:opacity-100",
+                    TALK_TONE_CLASSES[talkTone]
+                  )}
+                  aria-label={isCapturing ? "Stop recording" : "Start recording"}
+                  aria-pressed={isCapturing}
+                >
+                  <Mic className="h-5 w-5" />
+                </Button>
+              </div>
+              <div className="text-xs uppercase tracking-[0.35em] text-[color:var(--page-muted)]">
+                {statusCopy}
+              </div>
+              <p className="text-xs text-[color:var(--page-muted)]" aria-live="polite">
+                {helperCopy}
+              </p>
+            </div>
+            <p className="text-[11px] uppercase tracking-[0.32em] text-[color:var(--page-muted)]">
+              Private by design
+            </p>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+};
+
 const FOOTER_SCROLL_DELTA_PX = 8;
 const FOOTER_SCROLL_EDGE_PX = 24;
 
@@ -478,6 +857,28 @@ const INTENT_CITATION_CLASS =
   "mx-1 h-6 inline-flex items-center rounded-full border border-[color:var(--page-border)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:var(--page-muted)] transition-colors hover:border-[color:var(--page-accent)] hover:text-[color:var(--page-ink-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--page-accent-strong)]/40";
 const INTENT_CITATION_ACTIVE_CLASS =
   "border-[color:var(--page-accent-strong)] bg-[color:var(--page-accent)]/25 text-[color:var(--page-ink-strong)]";
+const ENTRY_TOOLBAR_BUTTON_CLASS =
+  "h-7 gap-1.5 px-2 text-[11px] font-semibold text-[color:var(--page-ink-strong)] hover:bg-[color:var(--page-border)]/60";
+const ENTRY_TOOLBAR_ICON_BUTTON_CLASS = "w-7 px-0";
+const ENTRY_TOOLBAR_ICON_CLASS = "h-3.5 w-3.5";
+const ENTRY_TOOLBAR_DROPDOWN_ICON_CLASS = "h-3 w-3 opacity-70";
+const ENTRY_TOOLBAR_DIVIDER_CLASS = "h-5 w-px bg-[color:var(--page-border)]/80";
+const ENTRY_TOOLBAR_COMING_SOON_CLASS =
+  "cursor-not-allowed opacity-60 hover:bg-transparent";
+
+const preventEntryToolbarAction = (
+  event: React.MouseEvent<HTMLButtonElement>
+) => {
+  event.preventDefault();
+};
+
+const ENTRY_TOOLBAR_COMING_SOON_PROPS = {
+  "aria-disabled": true,
+  "data-state": "coming-soon",
+  tabIndex: -1,
+  title: "Coming soon",
+  onClick: preventEntryToolbarAction,
+};
 
 type ParagraphRange = {
   index: number;
@@ -918,6 +1319,7 @@ const buildIntentSources = (
 ) => {
   const inputs: IntentSourceInput[] = [];
   const intentSources: IntentSource[] = [];
+  const intentAttachments: IntentAttachmentInput[] = [];
   let idCounter = 1;
 
   splitIntoSentences(text).forEach((sentence, sentenceIndex) => {
@@ -950,9 +1352,16 @@ const buildIntentSources = (
     const id = String(idCounter++);
     inputs.push({ id, type: "attachment", text: label });
     intentSources.push({ id, type: "attachment", attachmentId: attachment.id });
+    if (attachment.dataUrl) {
+      intentAttachments.push({
+        id,
+        name: label,
+        dataUrl: attachment.dataUrl,
+      });
+    }
   });
 
-  return { inputs, intentSources };
+  return { inputs, intentSources, intentAttachments };
 };
 
 const renderInlineMarkdown = (text: string) =>
@@ -1313,11 +1722,13 @@ type ConversationPaneProps = {
 
 export function ConversationPane({
   conversationId = null,
+  initialView = "history",
   displayName = null,
   userEmail = null,
   initialAccountMenuOpen = false,
 }: ConversationPaneProps) {
   const routeConversationId = conversationId ?? null;
+  const isHomeView = initialView === "home";
   const {
     conversations,
     activeConversationId,
@@ -1393,7 +1804,15 @@ export function ConversationPane({
   const isTranscriptLoading = isHistoryLoading || isRouteLoading;
   const isSavingPendingEntry =
     isPendingSave && messages.length === 0 && !pendingTranscript;
+  const isHomeLanding =
+    isHomeView && messages.length === 0 && !pendingTranscript && !isSavingPendingEntry;
   const shouldShowFooter = isDesktop || isComposerVisible || isFooterVisible;
+  const streamContainerClassName = cn(
+    "mx-auto w-full space-y-5",
+    isHomeLanding
+      ? "max-w-6xl px-4 py-6 md:px-6 md:py-8"
+      : "max-w-3xl px-1 py-3"
+  );
 
   const handleOpenConversation = useCallback(
     (conversationId: string) => {
@@ -1850,6 +2269,7 @@ export function ConversationPane({
   const micButtonLabel =
     micState === "recording" || micState === "paused" ? "Stop" : "Talk";
   const talkTone = getTalkTone(micState);
+  const isMicBusy = micState === "processing" || micState === "ready";
 
   const handleComposerToggle = () => {
     setIsComposerVisible((prev) => !prev);
@@ -1993,7 +2413,7 @@ export function ConversationPane({
         return;
       }
 
-      const { inputs, intentSources } = buildIntentSources(
+      const { inputs, intentSources, intentAttachments } = buildIntentSources(
         trimmed,
         message.attachments ?? []
       );
@@ -2007,7 +2427,11 @@ export function ConversationPane({
         const response = await fetch("/api/intent", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ entry: trimmed, sources: inputs }),
+          body: JSON.stringify({
+            entry: trimmed,
+            sources: inputs,
+            attachments: intentAttachments,
+          }),
         });
 
         if (!response.ok) {
@@ -2430,9 +2854,19 @@ export function ConversationPane({
   return (
     <div
       ref={containerRef}
-      className="relative h-[100dvh] overflow-x-hidden overflow-y-auto bg-white text-[color:var(--page-ink)] md:overflow-hidden"
+      className={cn(
+        "relative h-[100dvh] overflow-x-hidden overflow-y-auto text-[color:var(--page-ink)] md:overflow-hidden",
+        isHomeView ? "bg-[color:var(--page-bg)]" : "bg-white"
+      )}
       data-pane="conversation"
     >
+      {isHomeView && (
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(242,182,109,0.28),_transparent_55%)]" />
+          <div className="absolute -left-32 top-10 h-80 w-80 rounded-full bg-[radial-gradient(circle_at_30%_30%,_rgba(111,176,154,0.5),_transparent_70%)] blur-3xl animate-drift" />
+          <div className="absolute right-[-10rem] bottom-[-8rem] h-[30rem] w-[30rem] rounded-full bg-[radial-gradient(circle_at_30%_30%,_rgba(208,139,85,0.35),_transparent_70%)] blur-3xl animate-drift-slow" />
+        </div>
+      )}
       <div
         className="relative flex min-h-full w-full flex-col md:h-full md:flex-row"
         data-sidebar-state={sidebarState}
@@ -2460,14 +2894,20 @@ export function ConversationPane({
         </div>
 
         <main
-          className="flex min-h-[100dvh] flex-1 flex-col bg-white px-4 py-2 md:min-h-0 md:overflow-hidden md:px-6 md:py-2"
+          className={cn(
+            "flex min-h-[100dvh] flex-1 flex-col px-4 py-2 md:min-h-0 md:overflow-hidden md:px-6 md:py-2",
+            isHomeView ? "bg-[color:var(--page-bg)]" : "bg-white"
+          )}
           data-layout="journal-canvas"
         >
           <div className="flex w-full flex-1 min-h-0 flex-col gap-2 md:mx-auto">
             <nav
               data-nav="journal"
               aria-label="Journal"
-              className="sticky top-0 z-20 w-full border-b border-[color:var(--page-border)] bg-white/95 backdrop-blur"
+              className={cn(
+                "sticky top-0 z-20 w-full border-b border-[color:var(--page-border)] backdrop-blur",
+                isHomeView ? "bg-[color:var(--page-bg)]" : "bg-white/95"
+              )}
             >
               <div className="w-full px-2 py-1">
                 <div
@@ -2735,7 +3175,7 @@ export function ConversationPane({
                 data-scroll="journal-entries"
                 className="flex-1 overflow-y-auto"
               >
-                <div className="mx-auto w-full max-w-3xl space-y-5 px-1 py-3">
+                <div className={streamContainerClassName}>
                   {isTranscriptLoading ? (
                     <div className="text-sm text-[color:var(--page-muted)]">
                       Loading your journal history...
@@ -2783,6 +3223,14 @@ export function ConversationPane({
                       <div className="text-sm text-[color:var(--page-muted)]">
                         Saving your entry...
                       </div>
+                    ) : isHomeLanding ? (
+                      <NewJournalLanding
+                        greetingName={greetingName || null}
+                        micState={micState}
+                        talkTone={talkTone}
+                        isMicBusy={isMicBusy}
+                        onMicToggle={handleMicClick}
+                      />
                     ) : (
                       <div className="space-y-2 text-sm text-[color:var(--page-muted)]">
                         <p>Say your entry to get started.</p>
@@ -2891,7 +3339,7 @@ export function ConversationPane({
                                 data-variant="editor-toolbar"
                                 data-state={isActiveEntry ? "active" : "idle"}
                                 className={cn(
-                                  "flex w-full items-center gap-1 rounded-sm border border-[color:var(--page-border)] bg-[color:var(--page-paper)] px-2 text-[11px] text-[color:var(--page-muted)] shadow-sm shadow-black/5 transition-all duration-150",
+                                  "flex w-full flex-wrap items-center gap-1 rounded-sm border border-[color:var(--page-border)] bg-[color:var(--page-paper)] px-2 text-[11px] text-[color:var(--page-muted)] shadow-sm shadow-black/5 transition-all duration-150",
                                   isActiveEntry
                                     ? "py-1 opacity-100"
                                     : "max-h-0 overflow-hidden border-transparent py-0 opacity-0 pointer-events-none"
@@ -2906,16 +3354,16 @@ export function ConversationPane({
                                   data-control="entry-undo"
                                   title="Undo"
                                   aria-label="Undo"
-                                  className="h-7 gap-1.5 px-2 text-[11px] font-semibold text-[color:var(--page-ink-strong)] hover:bg-[color:var(--page-border)]/60"
+                                  className={ENTRY_TOOLBAR_BUTTON_CLASS}
                                   onClick={() => handleEntryUndo(message.id)}
                                   disabled={!isActiveEntry}
                                 >
-                                  <RotateCcw className="h-3.5 w-3.5" />
+                                  <RotateCcw className={ENTRY_TOOLBAR_ICON_CLASS} />
                                   <span>Undo</span>
                                 </Button>
                                 <span
                                   aria-hidden="true"
-                                  className="h-5 w-px bg-[color:var(--page-border)]/80"
+                                  className={ENTRY_TOOLBAR_DIVIDER_CLASS}
                                 />
                                 <Button
                                   type="button"
@@ -2924,12 +3372,361 @@ export function ConversationPane({
                                   data-control="entry-restore"
                                   title="Restore"
                                   aria-label="Restore"
-                                  className="h-7 gap-1.5 px-2 text-[11px] font-semibold text-[color:var(--page-ink-strong)] hover:bg-[color:var(--page-border)]/60"
+                                  className={ENTRY_TOOLBAR_BUTTON_CLASS}
                                   onClick={() => handleEntryRestore(message)}
                                   disabled={!isActiveEntry}
                                 >
-                                  <RotateCw className="h-3.5 w-3.5" />
+                                  <RotateCw className={ENTRY_TOOLBAR_ICON_CLASS} />
                                   <span>Restore</span>
+                                </Button>
+                                <span
+                                  aria-hidden="true"
+                                  className={ENTRY_TOOLBAR_DIVIDER_CLASS}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  data-control="entry-ai-edit"
+                                  aria-label="AI Edit"
+                                  className={cn(
+                                    ENTRY_TOOLBAR_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_COMING_SOON_CLASS
+                                  )}
+                                  {...ENTRY_TOOLBAR_COMING_SOON_PROPS}
+                                >
+                                  <Sparkles
+                                    className={cn(
+                                      ENTRY_TOOLBAR_ICON_CLASS,
+                                      "text-[color:var(--page-accent-strong)]"
+                                    )}
+                                  />
+                                  <span>AI Edit</span>
+                                  <ChevronDown
+                                    className={ENTRY_TOOLBAR_DROPDOWN_ICON_CLASS}
+                                  />
+                                </Button>
+                                <span
+                                  aria-hidden="true"
+                                  className={ENTRY_TOOLBAR_DIVIDER_CLASS}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  data-control="entry-text-style"
+                                  aria-label="Text style"
+                                  className={cn(
+                                    ENTRY_TOOLBAR_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_COMING_SOON_CLASS
+                                  )}
+                                  {...ENTRY_TOOLBAR_COMING_SOON_PROPS}
+                                >
+                                  <span className="font-semibold">Aa</span>
+                                  <ChevronDown
+                                    className={ENTRY_TOOLBAR_DROPDOWN_ICON_CLASS}
+                                  />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  data-control="entry-font-family"
+                                  aria-label="Font family"
+                                  className={cn(
+                                    ENTRY_TOOLBAR_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_COMING_SOON_CLASS
+                                  )}
+                                  {...ENTRY_TOOLBAR_COMING_SOON_PROPS}
+                                >
+                                  <span className="whitespace-nowrap">
+                                    Sans Serif
+                                  </span>
+                                  <ChevronDown
+                                    className={ENTRY_TOOLBAR_DROPDOWN_ICON_CLASS}
+                                  />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  data-control="entry-font-size"
+                                  aria-label="Font size"
+                                  className={cn(
+                                    ENTRY_TOOLBAR_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_COMING_SOON_CLASS
+                                  )}
+                                  {...ENTRY_TOOLBAR_COMING_SOON_PROPS}
+                                >
+                                  <span>15</span>
+                                  <ChevronDown
+                                    className={ENTRY_TOOLBAR_DROPDOWN_ICON_CLASS}
+                                  />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  data-control="entry-text-color"
+                                  aria-label="Text color"
+                                  className={cn(
+                                    ENTRY_TOOLBAR_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_COMING_SOON_CLASS
+                                  )}
+                                  {...ENTRY_TOOLBAR_COMING_SOON_PROPS}
+                                >
+                                  <span
+                                    aria-hidden="true"
+                                    className="h-3.5 w-3.5 rounded-full border border-[color:var(--page-border)] bg-gradient-to-br from-amber-300 via-rose-400 to-sky-400"
+                                  />
+                                  <ChevronDown
+                                    className={ENTRY_TOOLBAR_DROPDOWN_ICON_CLASS}
+                                  />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  data-control="entry-bold"
+                                  aria-label="Bold"
+                                  className={cn(
+                                    ENTRY_TOOLBAR_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_ICON_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_COMING_SOON_CLASS
+                                  )}
+                                  {...ENTRY_TOOLBAR_COMING_SOON_PROPS}
+                                >
+                                  <span className="text-[11px] font-semibold">
+                                    B
+                                  </span>
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  data-control="entry-italic"
+                                  aria-label="Italic"
+                                  className={cn(
+                                    ENTRY_TOOLBAR_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_ICON_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_COMING_SOON_CLASS
+                                  )}
+                                  {...ENTRY_TOOLBAR_COMING_SOON_PROPS}
+                                >
+                                  <span className="text-[11px] italic">I</span>
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  data-control="entry-underline"
+                                  aria-label="Underline"
+                                  className={cn(
+                                    ENTRY_TOOLBAR_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_ICON_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_COMING_SOON_CLASS
+                                  )}
+                                  {...ENTRY_TOOLBAR_COMING_SOON_PROPS}
+                                >
+                                  <span className="text-[11px] underline">U</span>
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  data-control="entry-highlight"
+                                  aria-label="Highlight"
+                                  className={cn(
+                                    ENTRY_TOOLBAR_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_ICON_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_COMING_SOON_CLASS
+                                  )}
+                                  {...ENTRY_TOOLBAR_COMING_SOON_PROPS}
+                                >
+                                  <Highlighter className={ENTRY_TOOLBAR_ICON_CLASS} />
+                                </Button>
+                                <span
+                                  aria-hidden="true"
+                                  className={ENTRY_TOOLBAR_DIVIDER_CLASS}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  data-control="entry-list-bulleted"
+                                  aria-label="Bulleted list"
+                                  className={cn(
+                                    ENTRY_TOOLBAR_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_COMING_SOON_CLASS
+                                  )}
+                                  {...ENTRY_TOOLBAR_COMING_SOON_PROPS}
+                                >
+                                  <List className={ENTRY_TOOLBAR_ICON_CLASS} />
+                                  <ChevronDown
+                                    className={ENTRY_TOOLBAR_DROPDOWN_ICON_CLASS}
+                                  />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  data-control="entry-list-numbered"
+                                  aria-label="Numbered list"
+                                  className={cn(
+                                    ENTRY_TOOLBAR_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_ICON_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_COMING_SOON_CLASS
+                                  )}
+                                  {...ENTRY_TOOLBAR_COMING_SOON_PROPS}
+                                >
+                                  <ListOrdered className={ENTRY_TOOLBAR_ICON_CLASS} />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  data-control="entry-list-check"
+                                  aria-label="Checklist"
+                                  className={cn(
+                                    ENTRY_TOOLBAR_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_ICON_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_COMING_SOON_CLASS
+                                  )}
+                                  {...ENTRY_TOOLBAR_COMING_SOON_PROPS}
+                                >
+                                  <ListChecks className={ENTRY_TOOLBAR_ICON_CLASS} />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  data-control="entry-link"
+                                  aria-label="Insert link"
+                                  className={cn(
+                                    ENTRY_TOOLBAR_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_ICON_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_COMING_SOON_CLASS
+                                  )}
+                                  {...ENTRY_TOOLBAR_COMING_SOON_PROPS}
+                                >
+                                  <Link2 className={ENTRY_TOOLBAR_ICON_CLASS} />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  data-control="entry-align"
+                                  aria-label="Alignment"
+                                  className={cn(
+                                    ENTRY_TOOLBAR_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_ICON_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_COMING_SOON_CLASS
+                                  )}
+                                  {...ENTRY_TOOLBAR_COMING_SOON_PROPS}
+                                >
+                                  <AlignLeft className={ENTRY_TOOLBAR_ICON_CLASS} />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  data-control="entry-indent-increase"
+                                  aria-label="Increase indent"
+                                  className={cn(
+                                    ENTRY_TOOLBAR_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_ICON_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_COMING_SOON_CLASS
+                                  )}
+                                  {...ENTRY_TOOLBAR_COMING_SOON_PROPS}
+                                >
+                                  <IndentIncrease
+                                    className={ENTRY_TOOLBAR_ICON_CLASS}
+                                  />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  data-control="entry-indent-decrease"
+                                  aria-label="Decrease indent"
+                                  className={cn(
+                                    ENTRY_TOOLBAR_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_ICON_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_COMING_SOON_CLASS
+                                  )}
+                                  {...ENTRY_TOOLBAR_COMING_SOON_PROPS}
+                                >
+                                  <IndentDecrease
+                                    className={ENTRY_TOOLBAR_ICON_CLASS}
+                                  />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  data-control="entry-strikethrough"
+                                  aria-label="Strikethrough"
+                                  className={cn(
+                                    ENTRY_TOOLBAR_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_ICON_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_COMING_SOON_CLASS
+                                  )}
+                                  {...ENTRY_TOOLBAR_COMING_SOON_PROPS}
+                                >
+                                  <Strikethrough
+                                    className={ENTRY_TOOLBAR_ICON_CLASS}
+                                  />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  data-control="entry-superscript"
+                                  aria-label="Superscript"
+                                  className={cn(
+                                    ENTRY_TOOLBAR_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_ICON_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_COMING_SOON_CLASS
+                                  )}
+                                  {...ENTRY_TOOLBAR_COMING_SOON_PROPS}
+                                >
+                                  <span className="text-[11px] font-semibold">
+                                    x^2
+                                  </span>
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  data-control="entry-subscript"
+                                  aria-label="Subscript"
+                                  className={cn(
+                                    ENTRY_TOOLBAR_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_ICON_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_COMING_SOON_CLASS
+                                  )}
+                                  {...ENTRY_TOOLBAR_COMING_SOON_PROPS}
+                                >
+                                  <span className="text-[11px] font-semibold">
+                                    x_2
+                                  </span>
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  data-control="entry-more"
+                                  aria-label="More"
+                                  className={cn(
+                                    ENTRY_TOOLBAR_BUTTON_CLASS,
+                                    ENTRY_TOOLBAR_COMING_SOON_CLASS
+                                  )}
+                                  {...ENTRY_TOOLBAR_COMING_SOON_PROPS}
+                                >
+                                  <span>More</span>
+                                  <ChevronDown
+                                    className={ENTRY_TOOLBAR_DROPDOWN_ICON_CLASS}
+                                  />
                                 </Button>
                               </div>
                             )}
@@ -3096,7 +3893,8 @@ export function ConversationPane({
                 data-location="journal-footer"
                 data-state={shouldShowFooter ? "visible" : "hidden"}
                 className={cn(
-                  "sticky bottom-0 z-20 bg-white/95 backdrop-blur overflow-hidden transition-[max-height,transform,opacity] duration-200 ease-out md:static md:overflow-visible md:max-h-none",
+                  "sticky bottom-0 z-20 backdrop-blur overflow-hidden transition-[max-height,transform,opacity] duration-200 ease-out md:static md:overflow-visible md:max-h-none",
+                  isHomeView ? "bg-[color:var(--page-bg)]" : "bg-white/95",
                   shouldShowFooter
                     ? "max-h-[260px] translate-y-0 opacity-100"
                     : "max-h-0 translate-y-3 opacity-0 pointer-events-none"

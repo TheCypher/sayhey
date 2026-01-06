@@ -34,8 +34,9 @@ describe("Welcome page", () => {
     const html = renderToStaticMarkup(await WelcomePage());
 
     expect(html).toContain('data-state="welcome"');
-    expect(html).toContain("Welcome to Hey");
+    expect(html).toContain("Welcome to Say hey");
     expect(html).toContain("Quick tour");
+    expect(html).toContain("Editable notes");
     expect(html).toContain("Our philosophy");
   });
 

@@ -39,10 +39,10 @@ export default async function WelcomePage() {
                 Start now
               </p>
               <h2 className="font-display text-2xl text-[color:var(--page-ink-strong)]">
-                Ready to journal?
+                Ready to think out loud?
               </h2>
               <p className="text-sm text-[color:var(--page-muted)]">
-                Press Space to start recording from anywhere, double-tap Space to stop and send, or jump straight into a fresh journal.
+                Press Space to start a voice entry, double-tap Space to stop and save, or jump straight into a fresh journal.
               </p>
             </div>
 
@@ -66,7 +66,8 @@ export default async function WelcomePage() {
                 Shortcuts
               </p>
               <p className="mt-2">
-                Space toggles recording. Double-tap Space to stop & save. The sidebar lists your local journals and stays private.
+                Space toggles capture. Double-tap Space to stop & save. Entries
+                stay editable with Undo/Restore and inline attachments.
               </p>
             </div>
           </div>

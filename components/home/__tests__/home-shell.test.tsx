@@ -98,6 +98,14 @@ describe("HomeShell", () => {
     expect(html).toContain('data-role="account-initials"');
     expect(html).toContain(">AL<");
     expect(html).toContain('href="/account"');
-    expect(html).not.toContain(">Login<");
+    expect(html).not.toContain(">Log in<");
+  });
+
+  it("renders the centered hero headline and CTA", () => {
+    const html = renderToStaticMarkup(<HomeShell />);
+
+    expect(html).toContain("just speak.");
+    expect(html).toContain("Start journaling");
+    expect(html).toContain("Local-only, no cloud saving.");
   });
 });

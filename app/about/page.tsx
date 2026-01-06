@@ -6,27 +6,27 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { verifySessionToken } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
-  title: "About | Hey",
+  title: "About | Say hey",
   description:
-    "Privacy-first technology built for people, with local-only data and explicit trust by design.",
+    "A voice journal for thinking out loud, private and local by default.",
 };
 
 const PRIVACY_BULLETS = [
-  "We do not host your information.",
-  "We do not store your conversations.",
-  "We do not keep transcripts on our servers.",
+  "We do not store your audio.",
+  "We do not host your transcripts.",
+  "We do not train on your entries.",
 ];
 
 const TRUST_LINES = [
-  "Trust should not rely on policies, promises, or fine print. It should be built directly into how the technology works.",
-  "We cannot misuse your data because we do not have it.",
-  "This is not about us. This is not about building databases or extracting value from people. This is about empowering individuals.",
+  "The journal listens first and replies only when explicitly invited.",
+  "Entries stay editable with Undo/Restore today, with AI Edit tools coming next.",
+  "Your journal stays in your browser, encrypted at rest by default.",
 ];
 
 const PEOPLE_LINES = [
-  "Use it freely.",
-  "Use it confidently.",
-  "Use it knowing that what you say stays with you.",
+  "Speak freely.",
+  "Pause without pressure.",
+  "Return when you are ready.",
 ];
 
 export default async function AboutPage() {
@@ -65,14 +65,15 @@ export default async function AboutPage() {
             </p>
             <div className="space-y-4 animate-fade-up [animation-delay:120ms]">
               <h1 className="font-display text-4xl leading-tight text-[color:var(--page-ink-strong)] md:text-5xl lg:text-6xl">
-                Who We Are &amp; What We Stand For
+                A voice journal for thinking out loud.
               </h1>
               <p className="text-lg text-[color:var(--page-ink-strong)] md:text-xl">
-                We are building technology for people, not for platforms.
+                Say hey is built for reflection, not performance.
               </p>
               <p className="text-base text-[color:var(--page-muted)] md:text-lg">
-                Our philosophy is simple: your information belongs to you, not to
-                us, not to anyone else. That belief drives everything we do.
+                Speak naturally, pause, continue, and revisit your entries. The
+                journal listens first and lets you edit, refine, and organize
+                them into notes over time.
               </p>
             </div>
           </div>
@@ -93,11 +94,12 @@ export default async function AboutPage() {
                   Local by default
                 </p>
                 <p className="mt-2 text-base">
-                  All transcripts and data live locally on your own device.
+                  Transcripts live locally in your browser and are encrypted at
+                  rest.
                 </p>
               </div>
               <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--page-muted)]">
-                Your laptop. Your system. Your space.
+                Your device. Your journal. Your space.
               </p>
             </CardContent>
           </Card>
@@ -110,10 +112,10 @@ export default async function AboutPage() {
             </CardHeader>
             <CardContent className="space-y-4 text-[color:var(--page-muted)]">
               <p>
-                Our goal is to give people powerful tools without asking them to
-                give up their privacy in return. We want you to feel safe using
-                our product, confident that what you say, think, or create is
-                never stored, tracked, or owned by us.
+                Our goal is to make journaling effortless through voice. There are
+                no prompts required, no right way to do it, and no pressure to be
+                polished. Entries stay editable with Undo/Restore and inline
+                attachments so they can grow into notes.
               </p>
             </CardContent>
           </Card>
@@ -138,7 +140,7 @@ export default async function AboutPage() {
               </ul>
               <p>
                 That is not a feature. It is a core principle. We deliberately
-                designed the product this way because we do not want access to
+                designed the journal this way because we do not want access to
                 your thoughts, your conversations, or your private information.
               </p>
             </CardContent>
@@ -166,9 +168,9 @@ export default async function AboutPage() {
               For the People
             </h2>
             <p className="text-[color:var(--page-muted)]">
-              Our product exists to serve people, nothing more, nothing less. We
-              want users to experience the full power of our technology while
-              maintaining complete anonymity and control.
+              This journal exists to serve people, nothing more, nothing less.
+              We want you to speak freely, pause when you need to, and return on
+              your own terms.
             </p>
             <p className="text-[color:var(--page-muted)]">
               That is the foundation we are building on, and that is where we

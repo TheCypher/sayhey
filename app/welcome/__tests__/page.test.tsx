@@ -40,7 +40,8 @@ describe("Welcome page", () => {
   it("renders the quick tour content", async () => {
     const html = renderToStaticMarkup(await WelcomePage());
 
-    expect(html).toContain("Ready to journal?");
+    expect(html).toContain("Ready to think out loud?");
     expect(html).toContain("Shortcuts");
+    expect(html).toContain("Undo/Restore");
   });
 });

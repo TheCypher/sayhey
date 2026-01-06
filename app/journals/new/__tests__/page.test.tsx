@@ -43,9 +43,8 @@ describe("New journal page", () => {
     const html = renderToStaticMarkup(element);
 
     expect(mockConversationPane).toHaveBeenCalled();
+    expect(html).toContain('class="home-theme"');
     expect(html).toContain('data-layout="journal-canvas"');
-    expect(html).toContain("--page-accent:#6fb09a");
-    expect(html).toContain("--page-accent-strong:#1d554c");
     expect(html).not.toContain("Preparing your workspace");
   });
 });

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { getBoltRouter } from "@/lib/bolt/router";
+import {
+  describeIntentAttachments,
+  type IntentAttachmentInput,
+} from "@/lib/services/intent-attachments";
 
 type IntentSourceInput = {
   id: string;
@@ -62,12 +66,83 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing entry" }, { status: 400 });
   }
 
+  const rawAttachments = Array.isArray(body?.attachments)
+    ? body.attachments
+    : [];
+  const attachments: IntentAttachmentInput[] = rawAttachments
+    .map((attachment) => {
+      if (!attachment || typeof attachment !== "object") {
+        return null;
+      }
+      const candidate = attachment as Partial<IntentAttachmentInput>;
+      if (typeof candidate.id !== "string") {
+        return null;
+      }
+      const dataUrl =
+        typeof candidate.dataUrl === "string" ? candidate.dataUrl.trim() : "";
+      if (!dataUrl.startsWith("data:image/")) {
+        return null;
+      }
+      const name =
+        typeof candidate.name === "string" ? candidate.name.trim() : undefined;
+      return {
+        id: candidate.id,
+        name,
+        dataUrl,
+      };
+    })
+    .filter((item): item is IntentAttachmentInput => Boolean(item));
+
   try {
+    const attachmentSourceIds = new Set(
+      sources
+        .filter((source) => source.type === "attachment")
+        .map((source) => source.id)
+    );
+    const attachmentsForIntent = attachments.filter((attachment) =>
+      attachmentSourceIds.has(attachment.id)
+    );
+    let attachmentDescriptions: Array<{
+      id: string;
+      description: string;
+    }> = [];
+
+    if (attachmentsForIntent.length > 0) {
+      try {
+        attachmentDescriptions = await describeIntentAttachments(
+          attachmentsForIntent
+        );
+      } catch {
+        attachmentDescriptions = [];
+      }
+    }
+
+    const attachmentDescriptionsById = new Map(
+      attachmentDescriptions.map((item) => [item.id, item.description])
+    );
+    const hydratedSources = sources.map((source) => {
+      if (source.type !== "attachment") {
+        return source;
+      }
+      const description = attachmentDescriptionsById.get(source.id);
+      if (!description) {
+        return source;
+      }
+      const label = source.text?.trim();
+      return {
+        ...source,
+        text: label ? `${label}: ${description}` : description,
+      };
+    });
+
     const router = await getBoltRouter();
     const result = await router.route({
       id: `intent-${Date.now()}`,
       agentId: "intent",
-      input: sources.length > 0 ? { entry, sources } : { entry },
+      input:
+        hydratedSources.length > 0
+          ? { entry, sources: hydratedSources }
+          : { entry },
     });
     const intent = extractIntent(result).trim();
 

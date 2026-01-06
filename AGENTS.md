@@ -1,7 +1,7 @@
 # AGENTS.md
 
 Purpose: source of truth for feature scope and technical location. Update this file whenever you ship or adjust a feature, and mirror roadmap changes in `README.md` when applicable.
-Last updated: 2026-01-04
+Last updated: 2026-01-05
 
 ## Feature Catalog
 ### Voice Journal Pane
@@ -9,14 +9,34 @@ Last updated: 2026-01-04
 - What:
   - Push-to-talk capture with tap-to-stop transcription, clear mic/playback states, and sentence-level playback highlighting.
   - Talk button colors map to waiting/listening/paused/processing using a warm sunset palette on journal pages.
-  - Entries render as editable text blocks with timestamps and a bottom-right Listen control; user entries are inline-editable in place with a compact editor-style toolbar with labeled Undo/Restore controls that reset to the pre-edit text and attachments.
+  - Entries render as editable text blocks with timestamps and a bottom-right Listen control; user entries are inline-editable in place with a compact editor-style toolbar that keeps Undo/Restore active and surfaces coming-soon controls for AI Edit, typography, formatting, lists, links, alignment/indentation, and strike/script tools.
   - Entry editing supports drag-and-drop image attachments inserted at the caret and rendered inline; attachments stay locked in place while editing and track cursor positions while entry text stays plain.
-  - Entry actions include an Intent control that summarizes the entry's goal and motivation in the user's voice without advice, cites sources that highlight the referenced sentence/paragraph/attachment on hover or tap, and offers save/delete to persist or clear summaries.
+  - Entry actions include an Intent control that summarizes the entry's goal and motivation in the user's voice without advice, cites sources that highlight the referenced sentence/paragraph/attachment (including described images) on hover or tap, and offers save/delete to persist or clear summaries.
   - Full-width white `/journals/:id` canvas with a sticky journal navbar: desktop single-row header anchors sidebar toggle + JOURNAL left, centered mic/audio controls, and user name + account menu right; on mobile the mic/audio controls wrap beneath the header row to avoid horizontal scrolling and the compact Spacebar hint beside Talk is hidden; the hint reads "Spacebar - press Space to start, pause, or resume; double-tap Space to stop and send, or use Show text entry"; audio queue labels + Stop audio only appear after playback activates; bottom text entry rail with spacebar cues; no top navbar.
+  - The `/journals/new` workspace opens with the landing hero and live capture card to start a fresh entry before the white journal canvas takes over.
+  - The `/journals/new` journal navbar matches the landing background color.
+  - The `/journals/new` journal footer matches the landing background color.
   - Footer spacebar guidance stays compact and centered with bold instructions and an emphasized Show text entry link; on mobile the instruction bar collapses to only the Show text entry button and hides on scroll down/reappears on scroll up; the journal footer divider matches the text entry rail width.
   - Viewport-locked layout keeps shell and sidebar pinned; responsive stacking on small screens; text composer auto-collapses after send and saves text before optional Markdown-emphasis replies.
-- Where: `app/journals/[id]/page.tsx`, `app/journals/new/page.tsx`, `components/application/conversation-pane.tsx`, `components/application/conversation-sidebar.tsx`, `hooks/use-voice-capture.ts`, `hooks/use-tts-playback.ts`, `hooks/use-local-conversations.ts`, `lib/services/conversations.ts`, `lib/storage/types.ts`, `app/api/intent/route.ts`, `agents/intent.ts`, `docs/features/conversation-pane.md`.
+- Where: `app/journals/[id]/page.tsx`, `app/journals/new/page.tsx`, `components/application/conversation-pane.tsx`, `components/application/conversation-sidebar.tsx`, `hooks/use-voice-capture.ts`, `hooks/use-tts-playback.ts`, `hooks/use-local-conversations.ts`, `lib/services/conversations.ts`, `lib/services/intent-attachments.ts`, `lib/storage/types.ts`, `app/api/intent/route.ts`, `agents/intent.ts`, `docs/features/conversation-pane.md`.
 - Why: Keep voice-first journaling and replies in one predictable workflow aligned to `docs/product-reference.md` and shadcn/ui.
+
+### AI Editor + Notes Workspace
+- Status: planned
+- What:
+  - AI-assisted summaries, rewrites, organization, and action items layered on journal entries; scope expands over time.
+  - Titles/tags and structured note metadata to keep journals navigable.
+  - Suggestions can be triggered by explicit commands or surfaced proactively without blocking capture.
+- Where: `components/application/conversation-pane.tsx`, `app/api/chat/turns/route.ts`, `agents/helper.ts`, `docs/product-reference.md`.
+- Why: Turn voice-first journals into an AI-powered notes workspace while preserving explicit control.
+
+### Cloud Sync (Optional)
+- Status: planned
+- What:
+  - Opt-in cloud sync/server storage for journals while keeping local-only as the default.
+  - Sync is explicit and user-controlled; offline-first local storage remains primary.
+- Where: `lib/storage`, `docs/product-reference.md`.
+- Why: Enable multi-device continuity without compromising privacy defaults.
 
 ### New Journal Welcome Tour
 - Status: shipped
@@ -105,8 +125,8 @@ Last updated: 2026-01-04
 ### Marketing Homepage
 - Status: shipped
 - What:
-  - Minimal landing page with pill-style nav, green "Say hey" logo, and a split hero + capture card layout with warm color washes.
-  - Hero includes a signed-in display-name greeting plus the full-width streaming orbit text accent with randomized flow and faster motion.
+  - Minimal landing page with a calm top nav, green "Say hey" logo, and a centered hero card on warm paper with a floating UI collage.
+  - Hero includes a signed-in display-name greeting, centered headline, primary CTA, and login prompt, plus embedded voice capture inside the collage.
   - In-place sidebar toggle for local history and a primary CTA into the journal workspace.
   - Animated listening controls: Space starts capture, double-tap Space stops, then routes to `/journals/new` and `/journals/:id` after auto-save.
   - Talk control colors map to waiting/listening/paused/processing using the green brand accents on the homepage.
@@ -159,7 +179,7 @@ Last updated: 2026-01-04
 - Why: Keep styling consistent on iOS browsers that skip `@layer` rules.
 
 ## Non-goals / Out of scope
-- No default cloud sync or server-side journal storage unless explicitly added to this catalog and `docs/product-reference.md`.
+- No default cloud sync or server-side journal storage; local-only remains the default and any sync is opt-in and explicitly scoped in this catalog and `docs/product-reference.md`.
 - No ambient or always-on microphone capture; voice input remains explicit and push-to-talk.
 - No UI component library outside shadcn/ui unless the catalog calls it out.
 

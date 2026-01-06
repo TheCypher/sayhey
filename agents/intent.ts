@@ -34,6 +34,7 @@ const buildPrompt = (input: IntentInput) => {
     "Keep it concise but insightful (1-3 short sentences).",
     "Cite claims with bracketed source ids like [1], using the Sources list.",
     "Prefer sentence citations; cite paragraphs only if the intent spans them.",
+    "Attachment sources include brief image descriptions.",
     "Cite attachments only if the intent references an image.",
     "No lists, headings, or markdown.",
     ...sourceLines,

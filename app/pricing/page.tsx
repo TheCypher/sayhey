@@ -10,9 +10,9 @@ import { verifySessionToken } from "@/lib/auth/session";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "Pricing | Hey",
+  title: "Pricing | Say hey",
   description:
-    "See the Hey pricing plans. The Free plan is available now, with Pro coming soon.",
+    "See Say hey pricing. The Free plan is available now, with Pro coming soon.",
 };
 
 const PLAN_TABS = [
@@ -23,10 +23,10 @@ const PLAN_TABS = [
 
 const FREE_FEATURES = [
   "Push-to-talk voice journaling with Spacebar control.",
+  "Pause and resume entries without losing your place.",
+  "Editable entries with Undo/Restore and inline attachments.",
   "Local-only history with encrypted transcripts.",
-  "On-demand spoken replies with sentence highlights.",
-  "Welcome tour and privacy-first onboarding.",
-  "Listen controls on every entry.",
+  "Explicit, on-demand replies with spoken playback.",
 ];
 
 const PRO_FEATURES = [
@@ -65,11 +65,11 @@ export default async function PricingPage() {
             Pricing
           </p>
           <h1 className="font-display text-4xl text-[color:var(--page-ink-strong)] md:text-5xl lg:text-6xl animate-fade-up [animation-delay:120ms]">
-            Pricing
+            Pricing for a voice journal.
           </h1>
           <p className="text-base text-[color:var(--page-muted)] md:text-lg animate-fade-up [animation-delay:160ms]">
             Start with Free today. Pro is on the way, built for longer sessions
-            and deeper focus.
+            and deeper tools.
           </p>
           <div className="mt-2 inline-flex flex-wrap items-center gap-2 rounded-full border border-[color:var(--page-border)] bg-[color:var(--page-paper)] px-2 py-2 text-xs uppercase tracking-[0.2em] text-[color:var(--page-muted)] shadow-sm shadow-black/5 animate-fade-up [animation-delay:200ms]">
             {PLAN_TABS.map((tab) => (
@@ -109,7 +109,8 @@ export default async function PricingPage() {
                   Free
                 </CardTitle>
                 <p className="mt-2 text-sm text-[color:var(--page-muted)]">
-                  Everything you need to journal with voice and intention.
+                  A calm voice journal that listens first and keeps entries
+                  editable as notes.
                 </p>
               </div>
               <div>
@@ -198,7 +199,8 @@ export default async function PricingPage() {
 
         <p className="text-center text-xs text-[color:var(--page-muted)]">
           Free stays local-first. Pro will expand limits without changing how
-          your data is stored.
+          your data is stored. Notes workspace tools like AI Edit, summaries,
+          and tags are coming soon.
         </p>
       </div>
     </main>

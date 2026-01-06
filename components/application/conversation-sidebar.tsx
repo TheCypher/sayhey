@@ -15,7 +15,7 @@ import {
   Trash2,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { ConversationIndexItem } from "@/lib/storage/types";
@@ -322,15 +322,17 @@ export const ConversationSidebar = ({
             </Button>
           </div>
         )}
-        <Button
-          type="button"
-          variant="ghost"
-          className="h-10 w-full justify-start gap-3 rounded-none px-2 text-base font-medium text-[color:var(--page-ink-strong)] hover:bg-white/80"
+        <Link
+          href="/journals/new"
+          className={cn(
+            buttonVariants({ variant: "ghost", size: "default" }),
+            "h-10 w-full justify-start gap-3 rounded-none px-2 text-base font-medium text-[color:var(--page-ink-strong)] hover:bg-white/80"
+          )}
           onClick={onNewConversation}
         >
           <Plus className="h-4 w-4" />
           New Journal
-        </Button>
+        </Link>
         <div className="flex items-center gap-3 px-2">
           <Search className="h-4 w-4 text-[color:var(--page-muted)]" />
           <Input

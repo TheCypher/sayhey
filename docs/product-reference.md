@@ -1,9 +1,9 @@
-# Developer Reference: Voice-First Journal
-Version: 3.2
-Status: Design Locked - Voice Journal MVP
+# Developer Reference: Voice-First Journal Notes
+Version: 3.3
+Status: Design Locked - Voice Journal Notes MVP
 
 ## 1. Purpose of This Document
-This document defines how the voice-first journal behaves, why it behaves that way, and what constraints engineers must respect when building or extending the system.
+This document defines how the voice-first journal notes app behaves, why it behaves that way, and what constraints engineers must respect when building or extending the system.
 
 It exists to:
 - Align product, design, and engineering on the voice-first journal scope.
@@ -16,12 +16,13 @@ If a decision is not permitted here, it should be challenged.
 ## 2. Product Principles (Non-Negotiable)
 1) Voice is the primary interface; the text composer lives behind a secondary toggle for direct typed commands.
 2) Transcripts are always visible as journal entries.
-3) The journal stays quiet unless explicitly asked with a direct, unambiguous command.
-4) Replies are generated only after transcription completes.
-5) When a reply is requested, it renders as text and spoken audio.
-6) Push-to-talk keeps intent explicit and low risk.
-7) Errors must degrade to text-only, never block capture.
-8) Predictability beats automation.
+3) The journal doubles as an AI-powered notes workspace: entries stay editable and can be refined or organized over time.
+4) The journal does not generate or speak replies unless explicitly asked with a direct, unambiguous command; the AI editor may surface optional, non-blocking suggestions.
+5) Replies are generated only after transcription completes.
+6) When a reply is requested, it renders as text and spoken audio.
+7) Push-to-talk keeps intent explicit and low risk.
+8) Errors must degrade to text-only, never block capture.
+9) Predictability beats automation.
 
 Violating these principles is a product bug.
 
@@ -38,28 +39,35 @@ Violating these principles is a product bug.
 - Double-tap Spacebar stops capture; the mic button still stops and submits.
 - User taps the mic again to finish; audio is sent to STT.
 - Transcript appears as an inline-editable journal entry.
-- After transcription completes, the journal responds only if the transcript contains an explicit, direct command.
+- After transcription completes, the journal may surface AI editor suggestions (summaries, titles, tags, action items) even without a command.
+- The journal responds with a full reply only if the transcript contains an explicit, direct command.
 - When a reply is requested, it renders as text and is spoken aloud.
 
 ### 4.2 Text Turns
 - The text composer is hidden by default and revealed in the bottom text entry rail below the journal stream; it auto-collapses after send.
 - Submitting text always adds a journal entry to the stream.
+- The AI editor may surface optional suggestions for the entry (summaries, titles, tags, action items), even without a direct command.
 - Replies are only requested when the text includes an explicit, direct command.
 - Voice capture remains the primary workflow.
 
-### 4.3 Audio Playback Rules
+### 4.3 AI Editor (Notes)
+- The AI editor helps summarize, rewrite, organize, title/tag, and extract action items from journal entries; scope expands over time.
+- Suggestions can be triggered by explicit commands or surfaced proactively.
+- Editor suggestions are additive and user-controlled; applying them never blocks capture.
+
+### 4.4 Audio Playback Rules
 - Replies are spoken by default when requested.
 - TTS failures fall back to text-only without blocking capture.
 - Users can stop playback; stopping clears the queue.
 - Each journal entry includes a Listen control at the bottom right; using it stops current audio and speaks that entry.
-- Each journal entry includes an Intent control at the bottom right; it returns a short, first-person interpretation of the entry's goal and motivation without advice, with citations that highlight the referenced entry sentence, paragraph, or attachment on hover or tap.
+- Each journal entry includes an Intent control at the bottom right; it returns a short, first-person interpretation of the entry's goal and motivation without advice, with citations that highlight the referenced entry sentence, paragraph, or attachment (including image descriptions) on hover or tap.
 - Intent summaries can be saved per entry to avoid regeneration; saved intents render inline with a delete control.
 
 ## 5. Architecture Overview
 The system is a three-hop pipeline:
 1) Voice capture (client) -> STT (server) -> chat -> TTS.
 2) All third-party calls happen in server routes.
-3) Conversation history is stored locally in the browser only (IndexedDB) and is never persisted server-side.
+3) Conversation history is stored locally in the browser only (IndexedDB) and is never persisted server-side in the current release; opt-in cloud sync/server storage is planned.
 
 ### 5.1 Local-First History (Tier 1)
 - Conversations are persisted automatically in IndexedDB without prompts.
@@ -120,7 +128,7 @@ The system is a three-hop pipeline:
 - Entry and reply headers show the saved date and time.
 - Entry cards include bottom-right Listen and Intent controls; Listen plays the entry aloud and Intent summarizes goal and motivation in the user's voice without advice.
 - Saved intent summaries remain visible on the entry until deleted by the user.
-- Intent summaries render inline citations that highlight the referenced sentence, paragraph, or attachment in the entry on hover or tap.
+- Intent summaries render inline citations that highlight the referenced sentence, paragraph, or attachment (including described images) in the entry on hover or tap.
 - While audio plays or prepares the next sentence, the active sentence stays highlighted in the active entry or reply and advances as playback progresses; it clears when playback stops or errors.
 - Sentence highlighting uses native sentence segmentation when available and preserves sentence boundaries around closing quotes or brackets.
 - Journals render as a full-width white canvas with editable text blocks for entries (no card styling), a sticky full-width journal navbar with a desktop single row (sidebar toggle + JOURNAL left, centered mic/audio controls, user name + account menu right) that wraps the center controls onto a second row on smaller screens, plus a bottom text entry rail below the stream.
@@ -128,7 +136,7 @@ The system is a three-hop pipeline:
 - Audio queue labels and the Stop audio control appear only after audio playback has been activated at least once.
 - Replies render Markdown lists, code blocks, and inline emphasis (bold/italic/inline code).
 - Spoken audio strips saved-update blocks to stay concise.
-- User entries are inline-editable in place; focusing an entry reveals a compact editor-style toolbar with labeled Undo and Restore controls, and edits save locally on blur while keeping the same presentation (Restore returns the entry to its pre-edit text and attachments).
+- User entries are inline-editable in place; focusing an entry reveals a compact editor-style toolbar with labeled Undo and Restore controls plus disabled, coming-soon controls for AI Edit, typography, formatting, lists, links, alignment/indentation, and strike/script options. Edits save locally on blur while keeping the same presentation (Restore returns the entry to its pre-edit text and attachments).
 - Drag-and-drop image attachments insert at the caret and render inline with the text; attachments stay locked in place during editing and metadata stores cursor offsets to rehydrate placement.
 
 ### 8.4 Text Entry Visibility
@@ -175,20 +183,23 @@ The system is a three-hop pipeline:
 - No standalone privacy sentence appears on the journal surface.
 
 ### 8.10 Marketing Home
-- The `/` route is a minimal landing page with a hero, pill navigation, and a CTA to start journaling.
-- The landing navigation includes Home, Welcome, About, and Login when logged out.
+- The `/` route is a minimal landing page with a centered hero card, calm top navigation, and a primary CTA to start journaling.
+- The landing navigation includes Home, Pricing, Welcome, and About plus a Log in control when logged out.
 - Logged-in visitors see the journal-style account control (initials, linking to `/account`) instead of Login.
 - Logged-in visitors see a personalized greeting using their display name.
+- The desktop nav pairs the Log in/account control with Download and Start for free CTAs.
 - The landing page is separate from the journal workspace; new journals initiate from `/` and route to `/journals/new` once capture begins.
 - The `/journals/new` workspace does not create a conversation until the first entry is saved.
+- The `/journals/new` workspace opens with the landing hero + live capture card to start a fresh entry before the white journal canvas takes over.
+- The `/journals/new` journal navbar blends into the landing background with a matching page color.
+- The `/journals/new` journal footer blends into the landing background with a matching page color.
 - New entries started from `/journals/new` always create a fresh conversation; entries append only when the user is already on that journal's `/journals/:id`.
 - The homepage includes a visible listening control with animated rings that reflect mic state.
 - The homepage Talk control uses green accent tones for waiting, listening, paused, and processing, with the rings keyed to the same state colors.
-- The homepage shows a full-width streaming orbit text accent anchored to the hero on larger screens, scaled for readability with randomized start/direction/paths and a faster flow.
 - A sidebar toggle shortcut appears in the homepage header and opens/closes the journal history rail in place.
 - Pressing Space on the homepage starts the first voice capture; double-tap Space stops it, and once transcription begins the app routes to `/journals/new`.
 - Homepage transcripts auto-save once transcription completes, creating the conversation and routing to `/journals/:id`.
-- The homepage copy instructs users to press Space to begin and how to stop.
+- The homepage capture card includes Spacebar guidance for starting and stopping capture.
 
 ### 8.11 Pricing
 - The `/pricing` route presents the Free plan and its included voice-first features.
@@ -222,5 +233,5 @@ Optional:
 - Passphrase-protected encryption (Tier 2).
 - Encrypted index fields (title/preview).
 - Full-text search across transcripts.
-- Rich text formatting toolbars beyond Undo/Restore and inline image attachments.
+- Functional rich text formatting beyond Undo/Restore and inline image attachments (the toolbar shows coming-soon controls only).
 - Complex NLP-based intent detection.

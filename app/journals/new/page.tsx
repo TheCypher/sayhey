@@ -4,8 +4,7 @@ import { cookies } from "next/headers";
 import { ConversationPane } from "@/components/application/conversation-pane";
 import { getSessionIdentity } from "@/lib/auth/session-identity";
 
-const JOURNAL_THEME_CLASS =
-  "[--page-accent:#6fb09a] [--page-accent-strong:#1d554c]";
+const NEW_JOURNAL_THEME_CLASS = "home-theme";
 
 export default async function NewJournalPage() {
   const cookieStore = await cookies();
@@ -13,9 +12,12 @@ export default async function NewJournalPage() {
   const identity = await getSessionIdentity(token);
 
   return (
-    <div className={JOURNAL_THEME_CLASS}>
-      <Suspense fallback={<div className="min-h-[100dvh] bg-white" />}>
+    <div className={NEW_JOURNAL_THEME_CLASS}>
+      <Suspense
+        fallback={<div className="min-h-[100dvh] bg-[color:var(--page-bg)]" />}
+      >
         <ConversationPane
+          initialView="home"
           displayName={identity?.displayName}
           userEmail={identity?.email}
         />

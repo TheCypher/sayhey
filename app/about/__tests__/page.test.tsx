@@ -36,9 +36,9 @@ describe("About page", () => {
     expect(html).toContain('data-about="page"');
     expect(html).toContain('data-auth-theme="sunset"');
     expect(html).toContain("min-h-[100dvh]");
-    expect(html).toContain("Who We Are &amp; What We Stand For");
+    expect(html).toContain("A voice journal for thinking out loud.");
     expect(html).toContain(
-      "We are building technology for people, not for platforms."
+      "edit, refine, and organize them into notes over time."
     );
   });
 
@@ -46,9 +46,8 @@ describe("About page", () => {
     const html = renderToStaticMarkup(await AboutPage());
 
     expect(html).toContain("Privacy First - By Design");
-    expect(html).toContain("We do not host your information.");
-    expect(html).toContain(
-      "We cannot misuse your data because we do not have it."
-    );
+    expect(html).toContain("We do not store your audio.");
+    expect(html).toContain("Entries stay editable with Undo/Restore today");
+    expect(html).toContain("Trust Through Architecture, Not Promises");
   });
 });

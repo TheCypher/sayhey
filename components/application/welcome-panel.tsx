@@ -4,7 +4,12 @@ const WELCOME_TOUR_ITEMS = [
   {
     title: "Voice capture",
     description:
-      "Tap the mic or press Space to start. Pause or resume with Space; double-tap Space to stop and send.",
+      "Press Space or tap Talk to start. Pause or resume with Space; double-tap Space to stop and save.",
+  },
+  {
+    title: "Editable notes",
+    description:
+      "Entries stay editable with Undo/Restore and inline attachments. AI Edit comes next.",
   },
   {
     title: "Text entry on demand",
@@ -12,14 +17,14 @@ const WELCOME_TOUR_ITEMS = [
       "Use Show text entry for typed notes or direct commands when you prefer the keyboard.",
   },
   {
-    title: "Spoken replies",
+    title: "Explicit replies",
     description:
-      "Replies show up only after explicit commands and are spoken aloud by default.",
+      "The journal stays quiet unless you ask for a reply. Spoken playback is on by default.",
   },
   {
     title: "Local history rail",
     description:
-      "Open the left sidebar to browse, pin, rename, or archive your chats.",
+      "Open the left sidebar to browse, pin, rename, or archive your journals.",
   },
 ];
 
@@ -34,9 +39,9 @@ const WELCOME_PHILOSOPHY_ITEMS = [
     description: "No responses unless you explicitly ask for one.",
   },
   {
-    title: "Predictable control",
+    title: "No right way to journal",
     description:
-      "Clear mic and playback states keep voice work calm and intentional.",
+      "Start immediately, edit later, and shape entries into notes when you are ready.",
   },
 ];
 
@@ -61,11 +66,11 @@ export function WelcomePanel({ variant = "plain" }: WelcomePanelProps) {
           Welcome
         </p>
         <h3 className="font-display text-2xl text-[color:var(--page-ink-strong)]">
-          Welcome to Hey
+          Welcome to Say hey
         </h3>
         <p className="text-sm text-[color:var(--page-muted)]">
-          Your voice-first journal. Here is a quick tour and the philosophy behind
-          it.
+          Your voice journal and notes workspace for thinking out loud. Here is
+          a quick tour and the philosophy behind it.
         </p>
       </div>
       <div className="grid gap-6 md:grid-cols-2">
